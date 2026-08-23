@@ -55,7 +55,7 @@ Este proyecto emplea Infraestructura como Código (IaC). Todo el entorno se leva
 1. **Clonar el repositorio:**
 
 Bash  
-git clone https://github.com/TU\_ORGANIZACION/sgp-minero.git  
+git clone https://github.com/andy0noxo/sgp-minero.git  
 cd sgp-minero
 
 2. **Configuración de Secretos (Variables de Entorno):** Copia la plantilla de variables segura hacia tu entorno local:
