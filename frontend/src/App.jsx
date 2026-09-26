@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import LoginView from './LoginView';
+import MainLayout from './MainLayout';
 
 function App() {
-  const handleSuccess = (token) => {
-    alert("¡Inicio de sesión correcto! Token almacenado en memoria volátil.");
-  };
+  // En true para visualizar directamente la Vista 2
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
-  return <LoginView onLoginSuccess={handleSuccess} />;
+  return (
+    <>
+      {!isAuthenticated ? (
+        <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />
+      ) : (
+        <MainLayout onLogout={() => setIsAuthenticated(false)} />
+      )}
+    </>
+  );
 }
 
 export default App;
