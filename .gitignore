@@ -50,3 +50,4 @@ $RECYCLE.BIN/
 # ==========================================
 .docker/
 docker-compose.override.yml
+.env
