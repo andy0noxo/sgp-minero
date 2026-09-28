@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import UploadExcelView from './UploadExcelView';  
 import ValidationView from './ValidationView';
 import ReportsView from './ReportsView';
+import AuditView from './AuditView';
 
 const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.frei@duocuc.cl' }, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
@@ -108,6 +109,8 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
             <ValidationView />
           ) : activeMenu === 'reports' ? (
             <ReportsView />
+          ) : activeMenu === 'audit' ? (
+            <AuditView />
           ) : children ? (
             children
           ) : (
