@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import UploadExcelView from './UploadExcelView';  
 
 const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.frei@duocuc.cl' }, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
@@ -99,12 +100,16 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
         </aside>
 
         <main className="flex-1 bg-slate-950 p-8 overflow-y-auto">
-          {children ? children : (
+          {activeMenu === 'upload' ? (
+            <UploadExcelView />
+          ) : children ? (
+            children
+          ) : (
             <div className="border border-slate-800 bg-slate-900/40 rounded-xl p-8 text-center max-w-xl mx-auto mt-16">
               <div className="text-3xl mb-3">⚡</div>
-              <h2 className="text-base font-bold text-white mb-2">Vista Base Lista (SGP-14)</h2>
+              <h2 className="text-base font-bold text-white mb-2">Panel Operativo Activo</h2>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Módulo seleccionado: <strong className="text-amber-400">{navigationItems.find(i => i.id === activeMenu)?.label}</strong>. En esta área se renderizarán la tabla de viajes y las cargas masivas.
+                Módulo seleccionado: <strong className="text-amber-400">{navigationItems.find(i => i.id === activeMenu)?.label}</strong>. Selecciona "Carga Masiva (Excel)" en la barra lateral para importar nóminas.
               </p>
             </div>
           )}
