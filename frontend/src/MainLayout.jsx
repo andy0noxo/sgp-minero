@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import UploadExcelView from './UploadExcelView';  
+import ValidationView from './ValidationView';
 
 const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.frei@duocuc.cl' }, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
@@ -102,6 +103,8 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
         <main className="flex-1 bg-slate-950 p-8 overflow-y-auto">
           {activeMenu === 'upload' ? (
             <UploadExcelView />
+          ) : activeMenu === 'validation' ? (
+            <ValidationView />
           ) : children ? (
             children
           ) : (
