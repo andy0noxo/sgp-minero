@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import UploadExcelView from './UploadExcelView';  
 import ValidationView from './ValidationView';
+import ReportsView from './ReportsView';
 
 const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.frei@duocuc.cl' }, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
@@ -105,6 +106,8 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
             <UploadExcelView />
           ) : activeMenu === 'validation' ? (
             <ValidationView />
+          ) : activeMenu === 'reports' ? (
+            <ReportsView />
           ) : children ? (
             children
           ) : (
@@ -112,7 +115,7 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
               <div className="text-3xl mb-3">⚡</div>
               <h2 className="text-base font-bold text-white mb-2">Panel Operativo Activo</h2>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Módulo seleccionado: <strong className="text-amber-400">{navigationItems.find(i => i.id === activeMenu)?.label}</strong>. Selecciona "Carga Masiva (Excel)" en la barra lateral para importar nóminas.
+                Módulo seleccionado: <strong className="text-amber-400">{navigationItems.find(i => i.id === activeMenu)?.label}</strong>.
               </p>
             </div>
           )}
