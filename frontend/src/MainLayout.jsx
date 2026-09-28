@@ -3,6 +3,7 @@ import UploadExcelView from './UploadExcelView';
 import ValidationView from './ValidationView';
 import ReportsView from './ReportsView';
 import AuditView from './AuditView';
+import UsersView from './UsersView';
 
 const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.frei@duocuc.cl' }, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
@@ -111,6 +112,8 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
             <ReportsView />
           ) : activeMenu === 'audit' ? (
             <AuditView />
+          ) : activeMenu === 'users' ? (
+            <UsersView />
           ) : children ? (
             children
           ) : (
