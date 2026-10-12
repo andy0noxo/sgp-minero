@@ -190,6 +190,10 @@ Cargas**. Esta última consulta el historial de sus lotes, sus totales y el
 detalle de las filas rechazadas mediante la API protegida; los lotes de otros
 usuarios no se exponen.
 
+El rol Consultor dispone del **Dashboard corporativo**, con filtros por fecha,
+centro de costo y estado, paginación de hasta 50 registros y exportación CSV
+de la página actualmente renderizada.
+
 La carpeta [`database`](database/README.md) documenta la operación de
 PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las
 migraciones de Django en `backend/core/migrations/`.

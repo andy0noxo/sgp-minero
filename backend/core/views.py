@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from .models import RegistroViaje
 from .authentication import LoginSerializer
 from .permissions import IsAdministrador, IsCargador, IsConsultor
 from .serializers import AuthUserSerializer
@@ -215,6 +216,13 @@ class DashboardRecordsView(APIView):
                         'INVALID_FILTER',
                         f'{key} debe usar el formato YYYY-MM-DD.',
                     ) from exc
+        if filters['estado'] and filters['estado'] not in {
+            choice.value for choice in RegistroViaje.EstadoValidacion
+        }:
+            raise UploadValidationError(
+                'INVALID_FILTER',
+                'estado debe ser APROBADO o RECHAZADO.',
+            )
         try:
             data = get_dashboard_records(filters)
         except ValueError as exc:

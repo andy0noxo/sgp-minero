@@ -48,7 +48,26 @@ export default function UploadExcelView({ role }) {
       {!isAdmin && headers.length > 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-xl"><label className="text-xs text-slate-400">Columna RUT<select value={mapping.map_rut} onChange={(e) => setMapping({ ...mapping, map_rut: e.target.value })} className="input-dark"><option value="">Seleccionar...</option>{headers.map((header) => <option key={header}>{header}</option>)}</select></label><label className="text-xs text-slate-400">Columna nombre<select value={mapping.map_nombre} onChange={(e) => setMapping({ ...mapping, map_nombre: e.target.value })} className="input-dark"><option value="">Seleccionar...</option>{headers.map((header) => <option key={header}>{header}</option>)}</select></label></div>}
       {error && <p className="p-3 bg-rose-950/40 border border-rose-900 rounded-lg text-xs text-rose-300">{error}</p>}
       {file && (isAdmin || (mapping.map_rut && mapping.map_nombre && mapping.map_rut !== mapping.map_nombre)) && <button onClick={submit} disabled={loading} className="px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg">{loading ? 'Procesando...' : 'Procesar archivo'}</button>}
-      {result && <div className="p-4 bg-emerald-950/30 border border-emerald-800 rounded-xl text-sm text-emerald-300"><p>Filas: {result.total_filas}</p><p>Procesadas/creadas: {result.total_procesados ?? result.total_creados}</p><p>Actualizadas: {result.total_actualizados ?? 0}</p><p>Errores: {result.total_errores}</p>{result.detalle_errores?.length > 0 && <ul className="mt-2 list-disc pl-5">{result.detalle_errores.map((item) => <li key={`${item.fila}-${item.code}`}>Fila {item.fila}: {item.message}</li>)}</ul>}</div>}
+      {result && (
+        <div className={`p-4 rounded-xl text-sm ${
+          result.total_errores > 0
+            ? 'bg-amber-950/30 border border-amber-800 text-amber-300'
+            : 'bg-emerald-950/30 border border-emerald-800 text-emerald-300'
+        }`}>
+          <p>{result.total_errores > 0 ? 'Procesamiento parcial' : 'Procesamiento completado'}</p>
+          <p>Filas: {result.total_filas}</p>
+          <p>Procesadas/creadas: {result.total_procesados ?? result.total_creados}</p>
+          <p>Actualizadas: {result.total_actualizados ?? 0}</p>
+          <p>Errores: {result.total_errores}</p>
+          {result.detalle_errores?.length > 0 && (
+            <ul className="mt-2 list-disc pl-5">
+              {result.detalle_errores.map((item) => (
+                <li key={`${item.fila}-${item.code}`}>Fila {item.fila}: {item.message}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
 }

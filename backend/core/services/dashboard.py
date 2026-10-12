@@ -44,8 +44,12 @@ def get_dashboard_records(filters):
             {
                 'id': str(record.id),
                 'lote_id': str(record.lote_id),
+                'nombre_archivo_origen': record.nombre_archivo_origen,
                 'fila_origen': record.fila_origen,
                 'fecha_procesamiento': record.fecha_procesamiento.isoformat(),
+                'cargador_responsable': (
+                    record.cargador.email_corporativo or record.cargador.rut
+                ),
                 'estado_validacion': record.estado_validacion,
                 'motivo_rechazo': record.motivo_rechazo,
                 'datos': _plain_payload(record.payload_datos),

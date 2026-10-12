@@ -90,7 +90,15 @@ GET /api/v1/dashboard/records/
 Los parámetros disponibles son `from`, `to`, `centro_costo`, `estado`, `page`
 y `page_size`. El endpoint es de solo lectura. Los datos PII se descifran
 únicamente en memoria al construir la respuesta y permanecen cifrados en
-PostgreSQL JSONB.
+PostgreSQL JSONB. Cada resultado incluye el archivo de origen, la fila del
+Excel, el estado, la fecha de procesamiento y el cargador responsable.
+El filtro `estado` solo acepta `APROBADO` o `RECHAZADO`; otros valores devuelven
+`400` con el error `INVALID_FILTER`.
+
+El frontend permite filtrar por rango de fechas, centro de costo y estado
+(`APROBADO` o `RECHAZADO`). También permite exportar a CSV los registros
+actualmente renderizados en la página, sin enviar datos adicionales al
+servidor ni persistir el archivo exportado.
 
 ## Salud y despliegue
 

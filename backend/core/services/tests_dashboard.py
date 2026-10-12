@@ -74,6 +74,21 @@ class DashboardRecordsApiTests(TestCase):
         self.assertEqual(result['datos']['rut'], '12345678-5')
         self.assertEqual(result['datos']['nombre_completo'], 'María Pérez')
         self.assertNotIn('rut_cifrado', result['datos'])
+        self.assertEqual(result['nombre_archivo_origen'], 'viajes.xlsx')
+        self.assertEqual(result['cargador_responsable'], 'cargador@minera.cl')
+
+    @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
+    def test_consultor_can_filter_by_validation_status(self):
+        self.create_record()
+        rejected = self.create_record()
+        rejected.estado_validacion = RegistroViaje.EstadoValidacion.RECHAZADO
+        rejected.save(update_fields=['estado_validacion'])
+        response = self.authenticate(self.consultor).get(
+            '/api/v1/dashboard/records/?estado=RECHAZADO'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['data']['pagination']['total'], 1)
+        self.assertEqual(response.data['data']['results'][0]['id'], str(rejected.id))
 
     @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
     def test_cargador_is_forbidden_and_post_is_not_allowed(self):
@@ -88,6 +103,13 @@ class DashboardRecordsApiTests(TestCase):
     def test_invalid_date_filter_is_rejected(self):
         response = self.authenticate(self.consultor).get(
             '/api/v1/dashboard/records/?from=not-a-date'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['error']['code'], 'INVALID_FILTER')
+
+    def test_invalid_status_filter_is_rejected(self):
+        response = self.authenticate(self.consultor).get(
+            '/api/v1/dashboard/records/?estado=PENDIENTE'
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data['error']['code'], 'INVALID_FILTER')

@@ -13,10 +13,16 @@ from core.services.rut_validator import is_valid_rut, validate_rut
 
 
 class ServiceTests(TestCase):
-    def test_rut_validation_and_normalization(self):
+    def test_valid_rut_with_dotted_format(self):
         self.assertTrue(is_valid_rut('12.345.678-5'))
+
+    def test_valid_rut_with_spaces_is_normalized(self):
         self.assertEqual(validate_rut('12 345 678-5'), '12345678-5')
+
+    def test_invalid_rut_with_wrong_verifier(self):
         self.assertFalse(is_valid_rut('12.345.678-6'))
+
+    def test_invalid_rut_with_alphanumeric_body(self):
         self.assertFalse(is_valid_rut('12345678-X'))
 
     def test_name_normalization_ignores_case_accents_and_spaces(self):
