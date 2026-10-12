@@ -48,7 +48,7 @@ const mockReports = [
 ];
 
 const ReportsView = () => {
-  const [reports, setReports] = useState(mockReports);
+  const [reports] = useState(mockReports);
   const [selectedFaena, setSelectedFaena] = useState('all');
   const [selectedFormat, setSelectedFormat] = useState('all');
   const [isExporting, setIsExporting] = useState(false);

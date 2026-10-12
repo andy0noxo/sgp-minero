@@ -64,7 +64,7 @@ const mockLogs = [
 ];
 
 const AuditView = () => {
-  const [logs, setLogs] = useState(mockLogs);
+  const [logs] = useState(mockLogs);
   const [filterModule, setFilterModule] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');

@@ -162,6 +162,12 @@ La suite automatizada cubre:
 - Consultant dashboard filters, pagination, read-only access, and in-memory
   PII decryption.
 
+Para ejecutar todos los archivos de pruebas descubiertos por pytest:
+
+```powershell
+docker compose exec backend pytest
+```
+
 La prueba de rendimiento con 5.000 filas queda intencionalmente pendiente y
 no forma parte de esta ejecución de QA.
 
@@ -188,12 +194,29 @@ Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
-La variable `AES_SECRET_KEY` debe ser una llave Fernet válida en Base64
-URL-safe. Para generarla usando el contenedor:
+Las variables `DJANGO_SECRET_KEY` y `AES_SECRET_KEY` se leen desde el archivo
+`.env` ubicado en la raíz del repositorio. No se configuran en `settings.py` ni
+en el frontend.
+
+`DJANGO_SECRET_KEY` debe ser una cadena aleatoria, privada y larga. No requiere
+un formato Base64 concreto. Puedes generar una con:
+
+```powershell
+docker compose run --rm backend python -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+`AES_SECRET_KEY` debe ser una llave Fernet válida: 32 bytes aleatorios
+codificados en Base64 URL-safe. Para generarla usando el contenedor:
 
 ```powershell
 docker compose run --rm backend python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
+
+Pega cada resultado en su variable correspondiente dentro de `.env`. La llave
+Fernet no debe cambiar mientras existan registros cifrados, porque los datos
+anteriores dejarían de poder descifrarse. Usa claves diferentes para local,
+staging y producción; las claves de producción deben registrarse en el panel
+de secretos del proveedor y nunca versionarse.
 
 Comandos habituales desde la raíz:
 

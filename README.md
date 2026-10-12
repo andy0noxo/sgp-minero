@@ -80,17 +80,41 @@ Set-Location .\sgp-minero
 Copy-Item .env.example .env
 ```
 
-Abre el archivo `.env` generado y asegúrate de:
+Abre el archivo `.env` generado y reemplaza los valores de ejemplo de
+`DJANGO_SECRET_KEY` y `AES_SECRET_KEY`. Ambas claves se configuran únicamente
+en `.env`; no deben escribirse en `settings.py`, en el frontend ni en otro
+archivo versionado.
 
-* Configurar una llave `DJANGO_SECRET_KEY` aleatoria.  
-* Agregar una llave AES válida de 32 bytes (URL-safe base64) en la variable `AES_SECRET_KEY` para que el motor de base de datos pueda cifrar los registros PII.  
-* El host de la base de datos ya está configurado por defecto para la red interna de Docker (`DB_HOST=db`).  
+`DJANGO_SECRET_KEY` es la clave interna de firma de Django. Debe ser aleatoria,
+privada y suficientemente larga; para este proyecto se recomienda generar al
+menos 50 bytes aleatorios. No tiene que tener un formato Base64 específico.
+Puedes generarla desde PowerShell con:
 
-Si necesitas generar una llave Fernet mediante el contenedor:
+```powershell
+docker compose run --rm backend python -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+Pega el resultado después de `DJANGO_SECRET_KEY=` en `.env`.
+
+`AES_SECRET_KEY` utiliza el formato de clave Fernet de la librería
+`cryptography`: 32 bytes aleatorios codificados en Base64 URL-safe (normalmente
+44 caracteres y termina en `=`). No inventes esta clave ni la reemplaces por
+una contraseña. Genérala mediante el contenedor:
 
 ```powershell
 docker compose run --rm backend python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
+
+Pega el resultado después de `AES_SECRET_KEY=` en `.env`.
+
+La `AES_SECRET_KEY` debe permanecer estable mientras existan datos cifrados:
+si se cambia o se pierde, los registros PII existentes no podrán descifrarse.
+Para producción se debe generar una clave distinta a la local y configurarla
+directamente como secreto en el proveedor cloud; nunca se debe subir al
+repositorio ni compartirla.
+
+El host de la base de datos ya está configurado por defecto para la red interna
+de Docker (`DB_HOST=db`).
 
 3. **Desplegar el Ecosistema:** Levanta todos los servicios en segundo plano:
 
@@ -138,10 +162,10 @@ Set-Location ..
 
 ### Flujo mínimo de primera ejecución
 
-Si el repositorio ya está clonado y Docker Desktop está iniciado:
+Si el repositorio ya está clonado y Docker Desktop está iniciado, ejecuta los
+comandos desde la raíz del repositorio:
 
 ```powershell
-Set-Location D:\proyectos\Capstone\sgp-minero
 Copy-Item .env.example .env
 docker compose up --build -d
 docker compose ps
@@ -156,7 +180,6 @@ Cuando `.env` ya existe y las imágenes ya fueron construidas, no es necesario
 usar `--build`:
 
 ```powershell
-Set-Location D:\proyectos\Capstone\sgp-minero
 docker compose up -d
 docker compose ps
 curl.exe http://localhost:8000/api/v1/health/
