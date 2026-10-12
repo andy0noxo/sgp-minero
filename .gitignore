@@ -2,9 +2,11 @@
 # GESTIÓN DE SECRETOS (CRÍTICO - DEVSECOPS)
 # ==========================================
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 *.pem
+*.key
+*.crt
 secrets.json
 keys/
 
@@ -17,9 +19,14 @@ __pycache__/
 venv/
 env/
 .venv/
-db.sqlite3
+*.sqlite3
 media/
 staticfiles/
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # ==========================================
 # FRONTEND: NODE / REACT / VITE
@@ -30,6 +37,7 @@ build/
 .npm/
 npm-debug.log*
 pnpm-debug.log*
+.vite/
 
 # ==========================================
 # SISTEMA OPERATIVO Y ENTORNOS (IDE)
@@ -50,4 +58,6 @@ $RECYCLE.BIN/
 # ==========================================
 .docker/
 docker-compose.override.yml
-.env
+pgdata/
+postgres-data/
+*.sql.gz
