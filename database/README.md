@@ -25,8 +25,8 @@ definiciones de tablas que ya pertenezcan a las migraciones.
 
 Desde la raíz del repositorio:
 
-```text
-docker compose up --build
+```powershell
+docker compose up --build -d
 ```
 
 En el primer arranque, PostgreSQL crea automáticamente la base definida por
@@ -40,12 +40,24 @@ la prueba local. Para un entorno compartido se debe copiar `.env.example` a
 
 Comandos de verificación:
 
-```text
+```powershell
+docker compose ps
+docker compose logs -f db
 docker compose exec backend python manage.py showmigrations
 docker compose exec backend python manage.py check
 docker compose exec backend python manage.py test core
 docker compose exec db pg_isready -U usuario_local -d sgp_minero_db
+curl.exe http://localhost:8000/api/v1/health/
 ```
+
+Para detener los servicios sin eliminar los datos:
+
+```powershell
+docker compose down
+```
+
+`docker compose down -v` elimina el volumen `pgdata` y los datos locales;
+solo debe utilizarse en un entorno descartable.
 
 ## Persistencia y datos
 

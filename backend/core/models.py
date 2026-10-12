@@ -88,6 +88,7 @@ class LoteCarga(models.Model):
     total_filas = models.PositiveIntegerField(default=0)
     filas_procesadas = models.PositiveIntegerField(default=0)
     filas_rechazadas = models.PositiveIntegerField(default=0)
+    detalle_errores = models.JSONField(default=list, blank=True)
     fecha_inicio = models.DateTimeField(auto_now_add=True)
     fecha_termino = models.DateTimeField(null=True, blank=True)
 

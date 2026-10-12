@@ -4,6 +4,7 @@ from datetime import date
 from django.conf import settings
 from django.db import OperationalError, connection
 from rest_framework import status
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +19,7 @@ from .services.mapper import MapperValidationError
 from .services.master_person_importer import MasterImportError, import_master_people
 from .services.travel_processor import process_travel_file
 from .services.dashboard import get_dashboard_records
+from .services.upload_history import get_upload_detail, get_upload_history
 
 
 class LoginView(APIView):
@@ -127,6 +129,34 @@ class UploadProcessView(APIView):
             raise UploadValidationError('INVALID_UPLOAD', str(exc)) from exc
         response_status = status.HTTP_207_MULTI_STATUS if result['total_errores'] else status.HTTP_200_OK
         return Response({'data': result}, status=response_status)
+
+
+class UploadHistoryView(APIView):
+    permission_classes = (IsCargador,)
+
+    def get(self, request):
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            page_size = max(int(request.query_params.get('page_size', 25)), 1)
+        except ValueError as exc:
+            raise UploadValidationError(
+                'INVALID_PAGINATION',
+                'page y page_size deben ser números enteros.',
+            ) from exc
+        return Response(
+            {'data': get_upload_history(request.user, page, page_size)},
+            status=status.HTTP_200_OK,
+        )
+
+
+class UploadDetailView(APIView):
+    permission_classes = (IsCargador,)
+
+    def get(self, request, batch_id):
+        data = get_upload_detail(request.user, batch_id)
+        if data is None:
+            raise NotFound('La carga solicitada no existe.')
+        return Response({'data': data}, status=status.HTTP_200_OK)
 
 
 class MasterPersonImportView(APIView):

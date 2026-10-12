@@ -70,6 +70,18 @@ export function processUpload(file, mapping) {
   return request('/uploads/process/', { method: 'POST', body: formData });
 }
 
+export function getUploadHistory(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  return request(`/uploads/history/?${params.toString()}`);
+}
+
+export function getUploadDetail(batchId) {
+  return request(`/uploads/history/${batchId}/`);
+}
+
 export function importMasterPeople(file) {
   const formData = new FormData();
   formData.append('file', file);

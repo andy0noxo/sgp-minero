@@ -6,7 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from core.models import Maestro_Personas, Rol, Usuario
+from core.models import LoteCarga, Maestro_Personas, Rol, Usuario
 
 
 def excel_upload(rows):
@@ -74,3 +74,46 @@ class UploadApiTests(TestCase):
         response = self.client.post('/api/v1/uploads/headers/', {}, format='multipart')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data['error']['code'], 'INVALID_FILE')
+
+    @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
+    def test_upload_history_returns_batch_and_persists_rejection_details(self):
+        response = self.client.post(
+            '/api/v1/uploads/process/',
+            {
+                'file': excel_upload([
+                    {'Rut': '12345678-5', 'Nombre': 'Maria Perez'},
+                    {'Rut': '12345678-6', 'Nombre': 'Persona inválida'},
+                ]),
+                'mapping': '{"map_rut": "Rut", "map_nombre": "Nombre"}',
+            },
+            format='multipart',
+        )
+        batch_id = response.data['data']['lote_id']
+
+        history = self.client.get('/api/v1/uploads/history/')
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual(history.data['data']['pagination']['total'], 1)
+        self.assertEqual(history.data['data']['results'][0]['id'], batch_id)
+        self.assertEqual(history.data['data']['results'][0]['fecha_termino'] is not None, True)
+
+        detail = self.client.get(f'/api/v1/uploads/history/{batch_id}/')
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(len(detail.data['data']['detalle_errores']), 1)
+        self.assertEqual(detail.data['data']['detalle_errores'][0]['code'], 'INVALID_RUT')
+        self.assertEqual(len(detail.data['data']['registros_aprobados']), 1)
+
+    def test_upload_history_does_not_expose_another_loaders_batch(self):
+        other_role = Rol.objects.get(nombre_rol='Cargador')
+        other_user = Usuario.objects.create_user(
+            rut='11111111-1',
+            email_corporativo='otro@minera.cl',
+            password='correct-password',
+            rol=other_role,
+        )
+        LoteCarga.objects.create(
+            cargador=other_user,
+            nombre_archivo_origen='privado.xlsx',
+        )
+        response = self.client.get('/api/v1/uploads/history/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['data']['pagination']['total'], 0)

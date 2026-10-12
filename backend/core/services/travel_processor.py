@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.db import transaction
+from django.utils import timezone
 
 from core.models import LoteCarga, RegistroAuditoria, RegistroViaje
 from core.services.encryption import encrypt_pii
@@ -101,7 +102,17 @@ def process_travel_file(uploaded_file, mapping, user):
             LoteCarga.Estado.COMPLETADO_CON_ERRORES
             if errors else LoteCarga.Estado.COMPLETADO
         )
-        batch.save(update_fields=('filas_procesadas', 'filas_rechazadas', 'estado'))
+        batch.detalle_errores = errors
+        batch.fecha_termino = timezone.now()
+        batch.save(
+            update_fields=(
+                'filas_procesadas',
+                'filas_rechazadas',
+                'detalle_errores',
+                'estado',
+                'fecha_termino',
+            )
+        )
         RegistroAuditoria.objects.create(
             usuario=user,
             accion='PROCESAR_CARGA_VIAJES',

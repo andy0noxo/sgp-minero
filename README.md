@@ -41,7 +41,22 @@ El proyecto opera bajo una arquitectura de microservicios contenerizados y un es
 * Neon (PostgreSQL Cloud Serverless)  
 * GitHub (Control de versiones y auditoría)
 
-## **Instrucciones de Ejecución Local (Docker)**
+### Compatibilidad con hosting cloud
+
+La separación prevista por la documentación se soporta con:
+
+* Frontend compilado en Vercel.
+* Backend Dockerizado en Render o Railway.
+* PostgreSQL administrado en Neon.
+
+Para el backend cloud se deben configurar `DJANGO_DEBUG=False`,
+`DJANGO_COOKIE_SECURE=True`, `REFRESH_TOKEN_COOKIE_SAMESITE=None`,
+`DJANGO_ALLOWED_HOSTS` con el dominio del backend,
+`CORS_ALLOWED_ORIGINS` con el dominio HTTPS exacto de Vercel y `DATABASE_URL`
+con la cadena SSL entregada por Neon. El contenedor ejecuta las migraciones
+antes de Gunicorn y escucha el puerto `PORT` del proveedor.
+
+## **Ejecución local y comandos**
 
 Este proyecto emplea Infraestructura como Código (IaC). Todo el entorno se levanta mediante contenedores, por lo que no es necesario instalar Node, Python o PostgreSQL directamente en tu máquina local.
 
@@ -54,37 +69,126 @@ Este proyecto emplea Infraestructura como Código (IaC). Todo el entorno se leva
 
 1. **Clonar el repositorio:**
 
-Bash  
-git clone https://github.com/andy0noxo/sgp-minero.git  
-cd sgp-minero
+```powershell
+git clone https://github.com/andy0noxo/sgp-minero.git
+Set-Location .\sgp-minero
+```
 
 2. **Configuración de Secretos (Variables de Entorno):** Copia la plantilla de variables segura hacia tu entorno local:
 
-Bash  
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
+```
 
 Abre el archivo `.env` generado y asegúrate de:
 
 * Configurar una llave `DJANGO_SECRET_KEY` aleatoria.  
 * Agregar una llave AES válida de 32 bytes (URL-safe base64) en la variable `AES_SECRET_KEY` para que el motor de base de datos pueda cifrar los registros PII.  
 * El host de la base de datos ya está configurado por defecto para la red interna de Docker (`DB_HOST=db`).  
+
+Si necesitas generar una llave Fernet mediante el contenedor:
+
+```powershell
+docker compose run --rm backend python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
 3. **Desplegar el Ecosistema:** Levanta todos los servicios en segundo plano:
 
-Bash  
-docker-compose up \--build \-d
+```powershell
+docker compose up --build -d
+```
 
 4. **Migraciones automáticas:** El backend espera que PostgreSQL esté saludable y
 ejecuta las migraciones Django automáticamente antes de iniciar el servidor.
 Para comprobarlas manualmente:
 
-Bash  
+```powershell
 docker compose exec backend python manage.py showmigrations
+```
+
+Comandos operativos adicionales desde la raíz:
+
+```powershell
+docker compose ps
+docker compose logs -f
+docker compose logs -f backend
+curl.exe http://localhost:8000/api/v1/health/
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py check
+docker compose exec backend python manage.py check --deploy
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py test core
+docker compose exec backend python manage.py test core.services.api_tests
+docker compose exec backend python manage.py makemigrations --check --dry-run
+docker compose down
+# Elimina también los datos locales de PostgreSQL:
+docker compose down -v
+```
+
+Validaciones del frontend con pnpm, desde `frontend`:
+
+```powershell
+Set-Location .\frontend
+pnpm install
+pnpm lint
+pnpm build
+pnpm dev
+Set-Location ..
+```
+
+### Flujo mínimo de primera ejecución
+
+Si el repositorio ya está clonado y Docker Desktop está iniciado:
+
+```powershell
+Set-Location D:\proyectos\Capstone\sgp-minero
+Copy-Item .env.example .env
+docker compose up --build -d
+docker compose ps
+curl.exe http://localhost:8000/api/v1/health/
+```
+
+El último comando debe devolver `{"status":"ok","database":"ok"}`.
+
+### Ejecuciones posteriores
+
+Cuando `.env` ya existe y las imágenes ya fueron construidas, no es necesario
+usar `--build`:
+
+```powershell
+Set-Location D:\proyectos\Capstone\sgp-minero
+docker compose up -d
+docker compose ps
+curl.exe http://localhost:8000/api/v1/health/
+```
+
+Usa nuevamente `docker compose up --build -d` cuando cambien un `Dockerfile`,
+`requirements.txt`, `package.json`, `pnpm-lock.yaml` o la configuración de
+construcción de un servicio.
+
+### Usuarios y roles
+
+El arranque no crea usuarios de negocio automáticamente. Para crear el
+superusuario del panel Django:
+
+```powershell
+docker compose exec backend python manage.py createsuperuser
+```
+
+Después ingresa a <http://localhost:8000/admin/> y crea o configura los roles
+`Administrador`, `Cargador` y `Consultor`, asociándolos a los usuarios
+correspondientes.
 
 **Accesos Disponibles (Entorno Local):**
 
 * Frontend (Mapper UI): `http://localhost:5173`  
 * Backend (API REST): `http://localhost:8000/api/v1/`  
 * Base de Datos (Conexión TCP): `localhost:5432`
+
+El rol Cargador dispone de las opciones **Carga Masiva (Excel)** y **Mis
+Cargas**. Esta última consulta el historial de sus lotes, sus totales y el
+detalle de las filas rechazadas mediante la API protegida; los lotes de otros
+usuarios no se exponen.
 
 La carpeta [`database`](database/README.md) documenta la operación de
 PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las

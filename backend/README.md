@@ -58,6 +58,18 @@ identidad contra `Maestro_Personas`, los archivos corruptos o vacíos y el
 límite de 10 MB. El RUT y el nombre se cifran con Fernet antes de persistirse
 en `RegistroViaje.payload_datos` como JSONB.
 
+El Cargador puede consultar sus propias cargas mediante:
+
+- `GET /api/v1/uploads/history/` para obtener el historial paginado. Acepta
+  `page` y `page_size`, con un máximo de 100 elementos por página.
+- `GET /api/v1/uploads/history/<lote_id>/` para consultar el detalle de una
+  carga, incluyendo sus filas aprobadas y el detalle persistido de los
+  rechazos.
+
+El historial está aislado por usuario: un Cargador no puede consultar lotes de
+otro usuario. Los estados, totales y fechas se almacenan en `LoteCarga`; los
+rechazos se conservan en `detalle_errores` como JSON y no contienen PII.
+
 ## Mantenedor masivo de personas
 
 El rol `Administrador` puede sincronizar `Maestro_Personas` mediante
@@ -89,10 +101,13 @@ PostgreSQL y `503` cuando la base de datos no está disponible.
 La imagen Docker utiliza Gunicorn para producción:
 
 ```text
-gunicorn config.wsgi:application --bind 0.0.0.0:8000
+python manage.py migrate --noinput
+gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}
 ```
 
-En desarrollo, `docker-compose.yml` reemplaza este comando por `runserver`.
+El script `production_entrypoint.sh` ejecuta las migraciones antes de iniciar
+Gunicorn y utiliza el puerto `PORT` entregado por el proveedor cloud. En
+desarrollo, `docker-compose.yml` reemplaza este comando por `runserver`.
 Para Render u otra plataforma equivalente se deben configurar las variables
 de entorno directamente en el panel de secretos:
 
@@ -100,9 +115,21 @@ de entorno directamente en el panel de secretos:
 - `DJANGO_DEBUG=False`
 - `DJANGO_ALLOWED_HOSTS`
 - `DJANGO_COOKIE_SECURE=True`
+- `REFRESH_TOKEN_COOKIE_SAMESITE=None` cuando el frontend y backend estén en
+  dominios distintos, como Vercel y Render
 - `AES_SECRET_KEY`
 - `DATABASE_URL` con conexión PostgreSQL
-- `CORS_ALLOWED_ORIGINS`
+- `CORS_ALLOWED_ORIGINS` con el origen HTTPS exacto de Vercel, sin `/` final
+
+Neon entrega una cadena `DATABASE_URL` que Django consume directamente,
+incluyendo sus parámetros SSL. No se deben configurar `DB_HOST`, `DB_NAME`,
+`DB_USER` ni `DB_PASSWORD` con valores locales cuando se utilice esa cadena.
+`DJANGO_ALLOWED_HOSTS` debe contener el dominio público del backend.
+
+Cuando el frontend y el backend viven en dominios diferentes, el navegador
+requiere `credentials: include`, CORS con credenciales y una cookie de refresh
+con `Secure=True` y `SameSite=None`. En local se mantiene `SameSite=Strict`
+porque ambos servicios se prueban bajo `localhost`.
 
 La configuración de producción activa redirección HTTPS y HSTS. Las llaves,
 credenciales y archivos `.env` nunca deben subirse al repositorio. Las
@@ -122,6 +149,7 @@ La suite automatizada cubre:
 - Fernet encryption/decryption and invalid configuration handling.
 - Excel header parsing and invalid-file handling.
 - Upload processing, partial `207` feedback, and persistence.
+- Upload history, batch detail, rejection persistence, and per-user isolation.
 - Administrator master import, UPSERT behavior, partial errors, and RBAC.
 - Consultant dashboard filters, pagination, read-only access, and in-memory
   PII decryption.
@@ -144,15 +172,38 @@ Las entidades principales son `Rol`, `Usuario`, `Maestro_Personas`,
 
 ## Desarrollo local
 
-Copia `.env.example` a `.env`, completa las variables locales y levanta el
-backend mediante Docker Compose. La variable `AES_SECRET_KEY` debe ser una
-llave Fernet válida en Base64 URL-safe.
+Copia `.env.example` a `.env` desde la raíz y levanta el backend mediante
+Docker Compose. En Windows PowerShell:
 
-Comandos habituales:
-
-```text
-docker compose up --build
-docker compose exec backend python manage.py migrate
-docker compose exec backend python manage.py check
-docker compose exec backend python manage.py test core
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
 ```
+
+La variable `AES_SECRET_KEY` debe ser una llave Fernet válida en Base64
+URL-safe. Para generarla usando el contenedor:
+
+```powershell
+docker compose run --rm backend python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Comandos habituales desde la raíz:
+
+```powershell
+docker compose ps
+docker compose logs -f backend
+curl.exe http://localhost:8000/api/v1/health/
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py showmigrations
+docker compose exec backend python manage.py check
+docker compose exec backend python manage.py check --deploy
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py makemigrations --check --dry-run
+docker compose exec backend python manage.py test core
+docker compose exec backend python manage.py test core.services.api_tests
+docker compose down
+```
+
+El servicio `backend` ejecuta `migrate --noinput` automáticamente mediante
+`backend/entrypoint.sh` antes de iniciar `runserver`. La imagen define
+Gunicorn para producción, pero Compose utiliza `runserver` en local.

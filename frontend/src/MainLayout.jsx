@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import UploadExcelView from './UploadExcelView';  
 import DashboardView from './DashboardView';
+import UploadsHistoryView from './UploadsHistoryView';
 
 const MainLayout = ({ user, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const defaultMenu = user.role === 'Cargador' ? 'upload' : 'dashboard';
+  const [activeMenu, setActiveMenu] = useState(defaultMenu);
 
   const navigationItems = [
     { id: 'dashboard', label: 'Panel de Control', icon: '📊', roles: ['Consultor'] },
     { id: 'upload', label: user.role === 'Administrador' ? 'Mantenedor de Personas' : 'Carga Masiva (Excel)', icon: '📁', roles: ['Administrador', 'Cargador'] },
+    { id: 'uploads-history', label: 'Mis Cargas', icon: '🧾', roles: ['Cargador'] },
   ];
 
   const filteredMenu = navigationItems.filter(item => item.roles.includes(user.role));
@@ -48,7 +51,7 @@ const MainLayout = ({ user, onLogout, children }) => {
 
           <div className="flex items-center space-x-3 border-l border-slate-800 pl-6">
             <div className="text-right">
-              <div className="text-xs font-semibold text-slate-200">{user.name}</div>
+              <div className="text-xs font-semibold text-slate-200">{user.name || user.email_corporativo || user.rut}</div>
               <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full border ${roleBadges[user.role]?.bg}`}>
                 {roleBadges[user.role]?.label}
               </span>
@@ -99,6 +102,8 @@ const MainLayout = ({ user, onLogout, children }) => {
         <main className="flex-1 bg-slate-950 p-8 overflow-y-auto">
           {activeMenu === 'upload' ? (
             <UploadExcelView role={user.role} />
+          ) : activeMenu === 'uploads-history' ? (
+            <UploadsHistoryView />
           ) : activeMenu === 'dashboard' ? (
             <DashboardView />
           ) : children ? (
