@@ -10,14 +10,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
- 
-import os
+
 import environ
 
-env = environ.Env()
-# Apunta al archivo .env que está en la raíz del proyecto (dos carpetas más arriba)
-environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
+env = environ.Env(
+    DJANGO_DEBUG=(bool, False),
+    DJANGO_ALLOWED_HOSTS=(list, []),
+    CORS_ALLOWED_ORIGINS=(list, []),
+    DJANGO_COOKIE_SECURE=(bool, False),
+)
+environ.Env.read_env(Path(__file__).resolve().parent.parent.parent / '.env')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,12 +31,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zd*z=2_qn$oko20u(tna948&j0j@(74hj^!jg$h$2r6&a^y(tz'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+SECRET_KEY = env('DJANGO_SECRET_KEY')
+DEBUG = env('DJANGO_DEBUG')
+ALLOWED_HOSTS = env('DJANGO_ALLOWED_HOSTS')
+AES_SECRET_KEY = env('AES_SECRET_KEY')
 
 
 # Application definition
@@ -44,12 +46,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'core',
     'rest_framework',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -81,8 +85,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = DATABASES = {
-    'default': env.db('DATABASE_URL', default=f"postgres://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('DB_HOST')}:{env('DB_PORT')}/{env('DB_NAME')}")
+DATABASES = {
+    'default': env.db(
+        'DATABASE_URL',
+        default=(
+            f"postgres://{env('DB_USER')}:{env('DB_PASSWORD')}"
+            f"@{env('DB_HOST')}:{env('DB_PORT')}/{env('DB_NAME')}"
+        ),
+    )
 }
 
 
@@ -133,19 +143,41 @@ MAILERS = {
 }
 
 AUTH_USER_MODEL = 'core.Usuario'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuración general de Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'EXCEPTION_HANDLER': 'core.exceptions.api_exception_handler',
 }
 
-# Configuración específica de Simple JWT
-from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
+
+CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
+CORS_ALLOW_CREDENTIALS = True
+SESSION_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
+CSRF_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
+
+if not DEBUG:
+    if not ALLOWED_HOSTS:
+        raise ValueError('DJANGO_ALLOWED_HOSTS es obligatorio en producción.')
+    if not env('DJANGO_COOKIE_SECURE'):
+        raise ValueError('DJANGO_COOKIE_SECURE debe ser True en producción.')
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+REFRESH_TOKEN_COOKIE_NAME = 'sgp_refresh_token'
+REFRESH_TOKEN_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
+REFRESH_TOKEN_COOKIE_SAMESITE = 'Strict'
+REFRESH_TOKEN_COOKIE_PATH = '/api/v1/auth/'
+MAX_FAILED_LOGIN_ATTEMPTS = env.int('MAX_FAILED_LOGIN_ATTEMPTS', default=3)
+LOGIN_LOCKOUT_MINUTES = env.int('LOGIN_LOCKOUT_MINUTES', default=5)

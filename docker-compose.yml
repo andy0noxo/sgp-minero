@@ -1,27 +1,44 @@
-version: '3.8'
 services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-sgp_minero_db}
+      POSTGRES_USER: ${DB_USER:-usuario_local}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password_seguro_local}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-usuario_local} -d ${DB_NAME:-sgp_minero_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: ["/bin/sh", "/app/entrypoint.sh"]
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-dev-only-change-me-use-a-real-secret}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      DJANGO_COOKIE_SECURE: ${DJANGO_COOKIE_SECURE:-False}
+      MAX_FAILED_LOGIN_ATTEMPTS: ${MAX_FAILED_LOGIN_ATTEMPTS:-3}
+      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-5}
+      DB_NAME: ${DB_NAME:-sgp_minero_db}
+      DB_USER: ${DB_USER:-usuario_local}
+      DB_PASSWORD: ${DB_PASSWORD:-password_seguro_local}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -30,8 +47,8 @@ services:
       - /app/node_modules
     ports:
       - "5173:5173"
-    env_file:
-      - .env
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
 
 volumes:
   pgdata:

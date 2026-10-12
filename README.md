@@ -73,16 +73,22 @@ Abre el archivo `.env` generado y asegúrate de:
 Bash  
 docker-compose up \--build \-d
 
-4. **Aplicar Migraciones (Solo la primera ejecución):** Construye las tablas de la base de datos ejecutando las migraciones dentro del contenedor del backend:
+4. **Migraciones automáticas:** El backend espera que PostgreSQL esté saludable y
+ejecuta las migraciones Django automáticamente antes de iniciar el servidor.
+Para comprobarlas manualmente:
 
 Bash  
-docker-compose exec backend python manage.py migrate
+docker compose exec backend python manage.py showmigrations
 
 **Accesos Disponibles (Entorno Local):**
 
 * Frontend (Mapper UI): `http://localhost:5173`  
 * Backend (API REST): `http://localhost:8000/api/v1/`  
 * Base de Datos (Conexión TCP): `localhost:5432`
+
+La carpeta [`database`](database/README.md) documenta la operación de
+PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las
+migraciones de Django en `backend/core/migrations/`.
 
 ## **Equipo de Desarrollo (Squad)**
 
@@ -99,4 +105,3 @@ Operamos bajo el marco de trabajo ágil **Scrum** con Sprints iterativos:
 * **Tablero de Gestión:** El Product Backlog y Sprint Backlogs se administran activamente mediante **Jira Software**.  
 * **Trazabilidad (Smart Commits):** Todo el desarrollo en este repositorio está estrictamente ligado a los requerimientos del negocio. Cada commit o Pull Request integra el identificador único del ticket de Jira (ej. `SGP-15: Implementación de validación Módulo 11`).  
 * **Calidad Continua (DoD):** Ningún código es fusionado a la rama principal (`main`) sin antes ser verificado funcionalmente en el entorno de contenedores y haber ocultado todos sus secretos mediante el archivo `.env`.
-

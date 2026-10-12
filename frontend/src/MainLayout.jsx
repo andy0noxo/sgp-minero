@@ -1,29 +1,22 @@
 import React, { useState } from 'react';
 import UploadExcelView from './UploadExcelView';  
-import ValidationView from './ValidationView';
-import ReportsView from './ReportsView';
-import AuditView from './AuditView';
-import UsersView from './UsersView';
+import DashboardView from './DashboardView';
 
-const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.frei@duocuc.cl' }, onLogout, children }) => {
+const MainLayout = ({ user, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
   const [activeMenu, setActiveMenu] = useState('dashboard');
 
   const navigationItems = [
-    { id: 'dashboard', label: 'Panel de Control', icon: '📊', roles: ['admin', 'cargador', 'consultor'] },
-    { id: 'upload', label: 'Carga Masiva (Excel)', icon: '📁', roles: ['admin', 'cargador'] },
-    { id: 'validation', label: 'Validación de Pasajes', icon: '✅', roles: ['admin', 'cargador'] },
-    { id: 'reports', label: 'Reportes y Nóminas', icon: '📋', roles: ['admin', 'cargador', 'consultor'] },
-    { id: 'audit', label: 'Registro de Auditoría', icon: '🔒', roles: ['admin'] },
-    { id: 'users', label: 'Gestión de Usuarios', icon: '👥', roles: ['admin'] },
+    { id: 'dashboard', label: 'Panel de Control', icon: '📊', roles: ['Consultor'] },
+    { id: 'upload', label: user.role === 'Administrador' ? 'Mantenedor de Personas' : 'Carga Masiva (Excel)', icon: '📁', roles: ['Administrador', 'Cargador'] },
   ];
 
   const filteredMenu = navigationItems.filter(item => item.roles.includes(user.role));
 
   const roleBadges = {
-    admin: { label: 'Administrador', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
-    cargador: { label: 'Cargador de Datos', bg: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
-    consultor: { label: 'Consultor / Auditor', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+    Administrador: { label: 'Administrador', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+    Cargador: { label: 'Cargador de Datos', bg: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
+    Consultor: { label: 'Consultor / Auditor', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
   };
 
   return (
@@ -105,15 +98,9 @@ const MainLayout = ({ user = { name: 'Ángel Frei', role: 'admin', email: 'an.fr
 
         <main className="flex-1 bg-slate-950 p-8 overflow-y-auto">
           {activeMenu === 'upload' ? (
-            <UploadExcelView />
-          ) : activeMenu === 'validation' ? (
-            <ValidationView />
-          ) : activeMenu === 'reports' ? (
-            <ReportsView />
-          ) : activeMenu === 'audit' ? (
-            <AuditView />
-          ) : activeMenu === 'users' ? (
-            <UsersView />
+            <UploadExcelView role={user.role} />
+          ) : activeMenu === 'dashboard' ? (
+            <DashboardView />
           ) : children ? (
             children
           ) : (

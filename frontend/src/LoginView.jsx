@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
+import { login, setAccessToken } from './api';
 
 export default function LoginView({ onLoginSuccess }) {
-  const [identifier, setIdentifier] = useState('18.452.931-K');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -20,54 +19,18 @@ export default function LoginView({ onLoginSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLocked) {
-      setToast({
-        title: 'Acceso Bloqueado (429)',
-        message: 'Demasiados intentos fallidos. Intente nuevamente en 5 minutos.',
-      });
-      return;
-    }
-
     if (!validateForm()) return;
     setIsLoading(true);
     setToast(null);
 
     try {
-      const response = await fetch('/api/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ identificador: identifier.trim(), password }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFailedAttempts(0);
-        if (onLoginSuccess) onLoginSuccess(data.access_token);
-      } else if (response.status === 401) {
-        const newAttempts = failedAttempts + 1;
-        setFailedAttempts(newAttempts);
-        setToast({
-          title: 'Error de Autenticación (401)',
-          message: 'RUT o contraseña incorrectos.',
-        });
-        if (newAttempts >= 3) {
-          setIsLocked(true);
-          setToast({
-            title: 'Cuenta Temporalmente Bloqueada',
-            message: 'Has alcanzado el límite de 3 intentos fallidos consecutivos.',
-          });
-        }
-      } else {
-        setToast({
-          title: 'Error de Conexión',
-          message: 'No fue posible comunicar con el servidor central de Faena.',
-        });
-      }
-    } catch (err) {
+      const { data } = await login(identifier.trim(), password);
+      setAccessToken(data.access);
+      if (onLoginSuccess) onLoginSuccess(data.user);
+    } catch (error) {
       setToast({
-        title: 'Error de Autenticación (401)',
-        message: 'RUT o contraseña incorrectos.',
+        title: error.status === 401 ? 'Error de autenticación' : 'Error de conexión',
+        message: error.message,
       });
     } finally {
       setIsLoading(false);
@@ -115,7 +78,7 @@ export default function LoginView({ onLoginSuccess }) {
             </label>
             <input
               type="text"
-              disabled={isLoading || isLocked}
+              disabled={isLoading}
               value={identifier}
               onChange={(e) => {
                 setIdentifier(e.target.value);
@@ -136,7 +99,7 @@ export default function LoginView({ onLoginSuccess }) {
             <div className="relative flex items-center">
               <input
                 type={showPassword ? 'text' : 'password'}
-                disabled={isLoading || isLocked}
+                disabled={isLoading}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -161,7 +124,7 @@ export default function LoginView({ onLoginSuccess }) {
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isLoading || isLocked}
+              disabled={isLoading}
               className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm shadow-md transition-all disabled:opacity-60"
             >
               {isLoading ? 'Autenticando...' : 'Iniciar Sesión'}
