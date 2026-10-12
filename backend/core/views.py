@@ -2,7 +2,9 @@ import json
 from datetime import date
 
 from django.conf import settings
+from django.core.paginator import Paginator
 from django.db import OperationalError, connection
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .models import RegistroViaje
+from .models import Maestro_Personas, RegistroViaje
 from .authentication import LoginSerializer
 from .permissions import IsAdministrador, IsCargador, IsConsultor
 from .serializers import AuthUserSerializer
@@ -67,6 +69,21 @@ class RefreshTokenView(TokenRefreshView):
             {'data': {'access': serializer.validated_data['access']}},
             status=status.HTTP_200_OK,
         )
+
+
+class LogoutView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        response = Response(
+            {'message': 'Sesión cerrada.'},
+            status=status.HTTP_200_OK,
+        )
+        response.delete_cookie(
+            settings.REFRESH_TOKEN_COOKIE_NAME,
+            path=settings.REFRESH_TOKEN_COOKIE_PATH,
+        )
+        return response
 
 
 class CurrentUserView(APIView):
@@ -182,6 +199,62 @@ class MasterPersonImportView(APIView):
         return Response({'data': result}, status=response_status)
 
 
+class MasterPersonListView(APIView):
+    permission_classes = (IsAdministrador,)
+
+    def get(self, request):
+        try:
+            page_number = max(int(request.query_params.get('page', 1)), 1)
+            page_size = min(max(int(request.query_params.get('page_size', 25)), 1), 100)
+        except ValueError as exc:
+            raise UploadValidationError(
+                'INVALID_PAGINATION',
+                'page y page_size deben ser números enteros.',
+            ) from exc
+
+        queryset = Maestro_Personas.objects.all().order_by('nombre_completo')
+        faena = request.query_params.get('faena')
+        search = request.query_params.get('search')
+        estado = request.query_params.get('estado')
+        if faena:
+            queryset = queryset.filter(faena__iexact=faena)
+        if search:
+            queryset = queryset.filter(
+                Q(rut__icontains=search) | Q(nombre_completo__icontains=search)
+            )
+        if estado in {'habilitado', 'inhabilitado'}:
+            queryset = queryset.filter(estado_habilitacion=estado == 'habilitado')
+        elif estado:
+            raise UploadValidationError(
+                'INVALID_FILTER',
+                'estado debe ser habilitado o inhabilitado.',
+            )
+
+        paginator = Paginator(queryset, page_size)
+        page = paginator.get_page(page_number)
+        return Response({
+            'data': {
+                'results': [
+                    {
+                        'id': str(person.id),
+                        'rut': person.rut,
+                        'nombre_completo': person.nombre_completo,
+                        'faena': person.faena,
+                        'centro_costo': person.centro_costo,
+                        'estado_habilitacion': person.estado_habilitacion,
+                    }
+                    for person in page.object_list
+                ],
+                'pagination': {
+                    'page': page.number,
+                    'page_size': page.paginator.per_page,
+                    'total': paginator.count,
+                    'pages': paginator.num_pages,
+                },
+            },
+        })
+
+
 class DashboardRecordsView(APIView):
     permission_classes = (IsConsultor,)
 
@@ -189,6 +262,7 @@ class DashboardRecordsView(APIView):
         filters = {
             'from': request.query_params.get('from'),
             'to': request.query_params.get('to'),
+            'faena': request.query_params.get('faena'),
             'centro_costo': request.query_params.get('centro_costo'),
             'estado': request.query_params.get('estado'),
         }

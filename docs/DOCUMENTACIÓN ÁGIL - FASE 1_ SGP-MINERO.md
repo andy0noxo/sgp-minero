@@ -186,7 +186,7 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 * **Nivel de Acceso:** Perfil estrictamente de solo lectura (Read-Only). No tiene permisos para cargar archivos, modificar usuarios ni alterar configuraciones.  
 * **Responsabilidad:** Supervisar la correcta ejecución de los presupuestos, auditar los pasajes validados y extraer métricas para la toma de decisiones gerenciales.  
 * **Dolor Principal (Pain Point):** Falta de visibilidad consolidada y en tiempo real sobre los datos logísticos validados, lo que dificulta la generación de reportes y la trazabilidad de la información.  
-* **Beneficio Esperado (Solución):** Acceso a un panel de control corporativo (Dashboard) con tablas de datos estructuradas e inalterables, provistas de filtros dinámicos (por fecha, centro de costo, etc.) que permiten inspeccionar y exportar la información procesada de manera transparente y segura.
+* **Beneficio Esperado (Solución):** Acceso a un panel de control corporativo (Dashboard) con tablas de datos estructuradas e inalterables, provistas de filtros dinámicos (por fecha, faena, centro de costo, etc.) que permiten inspeccionar y exportar la información procesada de manera transparente y segura.
 
 
   ## **4\. Metodología de Trabajo y Estructura del Equipo**  {#4.-metodología-de-trabajo-y-estructura-del-equipo}

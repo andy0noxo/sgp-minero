@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import LoginView from './LoginView';
 import MainLayout from './MainLayout';
-import { clearAccessToken, getCurrentUser, refreshToken, setAccessToken } from './api';
+import { clearAccessToken, getCurrentUser, logout, refreshToken, setAccessToken } from './api';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -27,7 +27,17 @@ function App() {
       {!user ? (
         <LoginView onLoginSuccess={setUser} />
       ) : (
-        <MainLayout user={user} onLogout={() => { clearAccessToken(); setUser(null); }} />
+        <MainLayout
+          user={user}
+          onLogout={async () => {
+            try {
+              await logout();
+            } finally {
+              clearAccessToken();
+              setUser(null);
+            }
+          }}
+        />
       )}
     </>
   );

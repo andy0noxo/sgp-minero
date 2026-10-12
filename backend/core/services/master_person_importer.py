@@ -6,7 +6,7 @@ from core.models import Maestro_Personas, RegistroAuditoria
 from core.services.excel_reader import FileProcessingError, read_rows
 from core.services.rut_validator import RutValidationError, validate_rut
 
-REQUIRED_MASTER_COLUMNS = ('rut', 'nombre_completo', 'centro_costo')
+REQUIRED_MASTER_COLUMNS = ('rut', 'nombre_completo', 'faena', 'centro_costo')
 OPTIONAL_MASTER_COLUMNS = ('estado_habilitacion',)
 
 
@@ -56,14 +56,21 @@ def import_master_people(uploaded_file, user):
             try:
                 rut_value = row.get(source_columns['rut'])
                 name_value = row.get(source_columns['nombre_completo'])
+                faena_value = row.get(source_columns['faena'])
                 cost_center = row.get(source_columns['centro_costo'])
-                if _is_empty(rut_value) or _is_empty(name_value) or _is_empty(cost_center):
+                if (
+                    _is_empty(rut_value)
+                    or _is_empty(name_value)
+                    or _is_empty(faena_value)
+                    or _is_empty(cost_center)
+                ):
                     raise MasterImportError(
-                        'RUT, nombre_completo y centro_costo son obligatorios.'
+                        'RUT, nombre_completo, faena y centro_costo son obligatorios.'
                     )
 
                 rut = validate_rut(rut_value)
                 name = str(name_value).strip()
+                operation = str(faena_value).strip()
                 center = str(cost_center).strip()
                 enabled = _parse_enabled(
                     row.get(source_columns.get('estado_habilitacion'))
@@ -73,6 +80,7 @@ def import_master_people(uploaded_file, user):
                     rut=rut,
                     defaults={
                         'nombre_completo': name,
+                        'faena': operation,
                         'centro_costo': center,
                         'estado_habilitacion': enabled,
                     },

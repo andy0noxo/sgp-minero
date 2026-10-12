@@ -35,8 +35,8 @@ function exportCsv(records) {
   URL.revokeObjectURL(url);
 }
 
-export default function DashboardView() {
-  const [filters, setFilters] = useState({ from: '', to: '', centro_costo: '', estado: '', page: 1, page_size: PAGE_SIZE });
+export default function DashboardView({ faena }) {
+  const [filters, setFilters] = useState({ from: '', to: '', faena, centro_costo: '', estado: '', page: 1, page_size: PAGE_SIZE });
   const [result, setResult] = useState({ results: [], pagination: { total: 0, pages: 0 } });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,11 @@ export default function DashboardView() {
     }
   };
 
-  useEffect(() => { loadRecords(); }, []);
+  useEffect(() => {
+    const nextFilters = { ...filters, faena, page: 1 };
+    setFilters(nextFilters);
+    loadRecords(nextFilters);
+  }, [faena]);
 
   const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value, page: 1 }));
 
@@ -67,6 +71,7 @@ export default function DashboardView() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
         <label className="text-xs text-slate-400">Desde<input type="date" value={filters.from} onChange={(e) => updateFilter('from', e.target.value)} className="input-dark" /></label>
         <label className="text-xs text-slate-400">Hasta<input type="date" value={filters.to} onChange={(e) => updateFilter('to', e.target.value)} className="input-dark" /></label>
+        <label className="text-xs text-slate-400">Faena<select value={filters.faena} onChange={(e) => updateFilter('faena', e.target.value)} className="input-dark"><option value="">Todas</option><option value="Faena Cordillera">Faena Cordillera</option><option value="Faena Norte">Faena Norte</option><option value="Faena Central">Faena Central</option></select></label>
         <label className="text-xs text-slate-400">Centro de costo<input value={filters.centro_costo} onChange={(e) => updateFilter('centro_costo', e.target.value)} className="input-dark" /></label>
         <label className="text-xs text-slate-400">Estado<select value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="input-dark"><option value="">Todos</option><option value="APROBADO">Aprobado</option><option value="RECHAZADO">Rechazado</option></select></label>
         <div className="flex gap-2 items-end md:col-span-4">
@@ -79,10 +84,10 @@ export default function DashboardView() {
         {loading ? <p className="p-6 text-sm text-slate-400">Cargando registros...</p> : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900 text-slate-400 uppercase"><tr><th className="p-3">Archivo</th><th className="p-3">Fila</th><th className="p-3">RUT</th><th className="p-3">Nombre</th><th className="p-3">Fecha vuelo</th><th className="p-3">Estado</th><th className="p-3">Cargador</th><th className="p-3">Procesamiento</th></tr></thead>
+              <thead className="bg-slate-900 text-slate-400 uppercase"><tr><th className="p-3">Archivo</th><th className="p-3">Fila</th><th className="p-3">RUT</th><th className="p-3">Nombre</th><th className="p-3">Faena</th><th className="p-3">Fecha vuelo</th><th className="p-3">Estado</th><th className="p-3">Cargador</th><th className="p-3">Procesamiento</th></tr></thead>
               <tbody className="divide-y divide-slate-800">
                 {result.results.map((record) => (
-                  <tr key={record.id}><td className="p-3">{record.nombre_archivo_origen}</td><td className="p-3">{record.fila_origen}</td><td className="p-3">{record.datos.rut || '—'}</td><td className="p-3">{record.datos.nombre_completo || '—'}</td><td className="p-3">{getFlightDate(record)}</td><td className="p-3">{record.estado_validacion}</td><td className="p-3">{record.cargador_responsable}</td><td className="p-3">{new Date(record.fecha_procesamiento).toLocaleString('es-CL')}</td></tr>
+                  <tr key={record.id}><td className="p-3">{record.nombre_archivo_origen}</td><td className="p-3">{record.fila_origen}</td><td className="p-3">{record.datos.rut || '—'}</td><td className="p-3">{record.datos.nombre_completo || '—'}</td><td className="p-3">{record.datos.faena || '—'}</td><td className="p-3">{getFlightDate(record)}</td><td className="p-3">{record.estado_validacion}</td><td className="p-3">{record.cargador_responsable}</td><td className="p-3">{new Date(record.fecha_procesamiento).toLocaleString('es-CL')}</td></tr>
                 ))}
               </tbody>
             </table>

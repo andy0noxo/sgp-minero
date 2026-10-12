@@ -32,6 +32,7 @@ class ServiceTests(TestCase):
         person = Maestro_Personas.objects.create(
             rut='12345678-5',
             nombre_completo='María José Pérez',
+            faena='Faena Cordillera',
             centro_costo='MINA-01',
         )
         match, error = find_matching_person('12345678-5', 'maria jose   perez')

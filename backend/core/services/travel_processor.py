@@ -85,6 +85,7 @@ def process_travel_file(uploaded_file, mapping, user):
             payload.update({
                 'rut_cifrado': encrypt_pii(normalized_rut),
                 'nombre_cifrado': encrypt_pii(person.nombre_completo),
+                'faena': person.faena,
             })
             RegistroViaje.objects.create(
                 lote=batch,

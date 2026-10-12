@@ -43,6 +43,7 @@ class DashboardRecordsApiTests(TestCase):
             estado_validacion=RegistroViaje.EstadoValidacion.APROBADO,
             payload_datos={
                 'centro_costo': 'MINA-01',
+                'faena': 'Faena Cordillera',
                 'rut_cifrado': encrypt_pii('12345678-5'),
                 'nombre_cifrado': encrypt_pii('María Pérez'),
             },
@@ -76,6 +77,24 @@ class DashboardRecordsApiTests(TestCase):
         self.assertNotIn('rut_cifrado', result['datos'])
         self.assertEqual(result['nombre_archivo_origen'], 'viajes.xlsx')
         self.assertEqual(result['cargador_responsable'], 'cargador@minera.cl')
+
+    @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
+    def test_consultor_can_filter_by_faena(self):
+        self.create_record()
+        other = self.create_record()
+        other.payload_datos['faena'] = 'Faena Norte'
+        other.save(update_fields=['payload_datos'])
+
+        response = self.authenticate(self.consultor).get(
+            '/api/v1/dashboard/records/?faena=Faena+Norte'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['data']['pagination']['total'], 1)
+        self.assertEqual(
+            response.data['data']['results'][0]['datos']['faena'],
+            'Faena Norte',
+        )
 
     @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
     def test_consultor_can_filter_by_validation_status(self):

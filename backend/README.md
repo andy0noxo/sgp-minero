@@ -24,6 +24,10 @@ Authorization: Bearer <access-token>
 `POST /api/v1/auth/refresh/` lee el refresh token desde la cookie y
 `GET /api/v1/auth/me/` devuelve el usuario y su rol.
 
+El login acepta el RUT con puntos, guion, sin separadores o con espacios
+externos, por ejemplo `12.345.678-5`, `12345678-5` y `123456785`. El backend
+normaliza el valor al formato canónico antes de consultar al usuario.
+
 Los roles implementados son `Administrador`, `Cargador` y `Consultor`. La
 autorización real se ejecuta en el backend mediante permisos DRF; las
 restricciones visuales del frontend no sustituyen estos permisos. Después de
@@ -39,6 +43,88 @@ Los errores de API mantienen la estructura:
   }
 }
 ```
+
+En desarrollo, el arranque ejecuta `seed_demo_data` cuando
+`SEED_DEMO_DATA=True`. El comando es idempotente, crea los tres roles del MVP,
+un superusuario con rol `Administrador`, un usuario `Cargador` y un usuario
+`Consultor`. Las contraseñas se leen desde `.env` y no se cambian si los
+usuarios ya existen.
+
+El `.env.example` contiene valores de demostración locales:
+
+```env
+SEED_DEMO_DATA=True
+SEED_DEMO_MASTER_DATA=True
+DJANGO_SUPERUSER_RUT=11111111-1
+DJANGO_SUPERUSER_EMAIL=admin@minera.local
+DJANGO_SUPERUSER_PASSWORD=cambiar-superuser-local
+DEMO_CARGADOR_RUT=22222222-2
+DEMO_CARGADOR_EMAIL=cargador@minera.local
+DEMO_CARGADOR_PASSWORD=cambiar-cargador-local
+DEMO_CONSULTOR_RUT=33333333-3
+DEMO_CONSULTOR_EMAIL=consultor@minera.local
+DEMO_CONSULTOR_PASSWORD=cambiar-consultor-local
+```
+
+El seed solo puede ejecutarse con `DJANGO_DEBUG=True`. En producción se debe
+usar `SEED_DEMO_DATA=False` y `SEED_DEMO_MASTER_DATA=False`. En ese entorno
+el maestro se carga con un archivo real desde el endpoint del Administrador.
+El primer usuario administrativo se crea de forma interactiva:
+
+```powershell
+docker compose exec backend python manage.py createsuperuser
+```
+
+El comando solicita el RUT, correo corporativo y contraseña. No se deben
+llevar contraseñas demo ni credenciales compartidas a producción.
+
+Para ejecutar el seed manualmente en desarrollo:
+
+```powershell
+docker compose exec backend python manage.py seed_demo_data
+```
+
+Con `SEED_DEMO_MASTER_DATA=True` el comando crea 75 personas demo, repartidas
+entre `Faena Cordillera`, `Faena Norte` y `Faena Central`, cinco centros de
+costo y estados habilitados e inhabilitados para probar paginación y filtros.
+Es idempotente, conserva los registros reales y solo actualiza sus RUT demo
+deterministas.
+
+Para omitir el seed en un entorno local:
+
+```env
+SEED_DEMO_DATA=False
+```
+
+## URLs de la API
+
+| Método | Ruta | Permiso |
+| --- | --- | --- |
+| `GET` | `/api/v1/health/` | Público |
+| `POST` | `/api/v1/auth/login/` | Público |
+| `POST` | `/api/v1/auth/refresh/` | Cookie de refresh |
+| `POST` | `/api/v1/auth/logout/` | Público; elimina la cookie de refresh |
+| `GET` | `/api/v1/auth/me/` | Autenticado |
+| `POST` | `/api/v1/uploads/headers/` | Cargador |
+| `POST` | `/api/v1/uploads/process/` | Cargador |
+| `GET` | `/api/v1/uploads/history/` | Cargador |
+| `GET` | `/api/v1/uploads/history/<lote_id>/` | Cargador propietario |
+| `POST` | `/api/v1/master-persons/import/` | Administrador |
+| `GET` | `/api/v1/master-persons/` | Administrador |
+| `GET` | `/api/v1/dashboard/records/` | Consultor |
+
+Las rutas protegidas responden `401` sin JWT y `403` cuando el usuario
+autenticado no posee el rol requerido. El frontend es una SPA y actualmente usa una única URL web (`/`); sus módulos
+se muestran dentro de esa página tras iniciar sesión. El Administrador inicia
+en Mantenedor de Personas, el Cargador en Carga Masiva y el Consultor en el
+Dashboard. El Dashboard es exclusivo del Consultor, tanto en frontend como en
+backend.
+
+El selector superior `Faena` es un filtro operacional del Dashboard. Sus
+valores demo son `Faena Cordillera`, `Faena Norte` y `Faena Central`. No
+reemplaza al campo `centro_costo`: `faena` identifica la operación minera y
+`centro_costo` la imputación contable. Al procesar un viaje, la faena se toma
+del registro correspondiente del maestro y se guarda en `payload_datos`.
 
 ## Carga y procesamiento de viajes
 
@@ -74,10 +160,14 @@ rechazos se conservan en `detalle_errores` como JSON y no contienen PII.
 
 El rol `Administrador` puede sincronizar `Maestro_Personas` mediante
 `POST /api/v1/master-persons/import/` usando CSV o XLSX. Las columnas
-obligatorias son `rut`, `nombre_completo` y `centro_costo`; 
+obligatorias son `rut`, `nombre_completo`, `faena` y `centro_costo`;
 `estado_habilitacion` es opcional y por defecto queda activa. La respuesta
 informa registros creados, actualizados y rechazados, y devuelve `207` si el
 resultado es parcial. La operación queda registrada en auditoría.
+
+También puede consultar la tabla mediante `GET /api/v1/master-persons/`. La
+respuesta es paginada y admite `faena`, `search`, `estado`, `page` y
+`page_size`. El frontend muestra este listado debajo del cargador masivo.
 
 ## Dashboard del Consultor
 
@@ -87,16 +177,18 @@ El rol `Consultor` puede consultar registros procesados mediante:
 GET /api/v1/dashboard/records/
 ```
 
-Los parámetros disponibles son `from`, `to`, `centro_costo`, `estado`, `page`
-y `page_size`. El endpoint es de solo lectura. Los datos PII se descifran
+Los parámetros disponibles son `from`, `to`, `faena`, `centro_costo`, `estado`,
+`page` y `page_size`. El endpoint es de solo lectura. El filtro `faena`
+compara contra la faena asociada a la persona en el maestro y propagada al
+registro de viaje. Los datos PII se descifran
 únicamente en memoria al construir la respuesta y permanecen cifrados en
 PostgreSQL JSONB. Cada resultado incluye el archivo de origen, la fila del
 Excel, el estado, la fecha de procesamiento y el cargador responsable.
 El filtro `estado` solo acepta `APROBADO` o `RECHAZADO`; otros valores devuelven
 `400` con el error `INVALID_FILTER`.
 
-El frontend permite filtrar por rango de fechas, centro de costo y estado
-(`APROBADO` o `RECHAZADO`). También permite exportar a CSV los registros
+El frontend permite filtrar por faena, rango de fechas, centro de costo y
+estado (`APROBADO` o `RECHAZADO`). También permite exportar a CSV los registros
 actualmente renderizados en la página, sin enviar datos adicionales al
 servidor ni persistir el archivo exportado.
 

@@ -53,6 +53,10 @@ export function refreshToken() {
   return request('/auth/refresh/', { method: 'POST' });
 }
 
+export function logout() {
+  return request('/auth/logout/', { method: 'POST' }, false);
+}
+
 export function getCurrentUser() {
   return request('/auth/me/');
 }
@@ -86,6 +90,14 @@ export function importMasterPeople(file) {
   const formData = new FormData();
   formData.append('file', file);
   return request('/master-persons/import/', { method: 'POST', body: formData });
+}
+
+export function getMasterPeople(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  return request(`/master-persons/?${params.toString()}`);
 }
 
 export function getDashboardRecords(filters = {}) {

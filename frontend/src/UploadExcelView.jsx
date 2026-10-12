@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { getUploadHeaders, importMasterPeople, processUpload } from './api';
+import React, { useEffect, useState } from 'react';
+import { getMasterPeople, getUploadHeaders, importMasterPeople, processUpload } from './api';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-export default function UploadExcelView({ role }) {
+export default function UploadExcelView({ role, faena }) {
   const isAdmin = role === 'Administrador';
   const [file, setFile] = useState(null);
   const [headers, setHeaders] = useState([]);
@@ -11,6 +11,8 @@ export default function UploadExcelView({ role }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [masterData, setMasterData] = useState({ results: [], pagination: { page: 1, pages: 0, total: 0 } });
+  const [masterFilters, setMasterFilters] = useState({ search: '', estado: '', page: 1, page_size: 25 });
 
   const selectFile = (candidate) => {
     if (!candidate) return;
@@ -34,7 +36,30 @@ export default function UploadExcelView({ role }) {
     try {
       const response = isAdmin ? await importMasterPeople(file) : await processUpload(file, mapping);
       setResult(response.data);
+      if (isAdmin) await loadMasterPeople();
     } catch (requestError) { setError(requestError.message); } finally { setLoading(false); }
+  };
+
+  const loadMasterPeople = async (filters = { ...masterFilters, faena }) => {
+    setLoading(true);
+    try {
+      const response = await getMasterPeople(filters);
+      setMasterData(response.data);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadMasterPeople({ ...masterFilters, faena, page: 1 });
+  }, [isAdmin, faena]);
+
+  const updateMasterFilter = (key, value) => {
+    const next = { ...masterFilters, [key]: value, page: 1 };
+    setMasterFilters(next);
+    loadMasterPeople({ ...next, faena });
   };
 
   return (
@@ -67,6 +92,23 @@ export default function UploadExcelView({ role }) {
             </ul>
           )}
         </div>
+      )}
+      {isAdmin && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="text-xs text-slate-400">Buscar RUT o nombre<input value={masterFilters.search} onChange={(e) => updateMasterFilter('search', e.target.value)} className="input-dark" /></label>
+            <label className="text-xs text-slate-400">Estado<select value={masterFilters.estado} onChange={(e) => updateMasterFilter('estado', e.target.value)} className="input-dark"><option value="">Todos</option><option value="habilitado">Habilitados</option><option value="inhabilitado">Inhabilitados</option></select></label>
+            <span className="text-xs text-slate-500 pb-2">Faena activa: {faena}</span>
+          </div>
+          <div className="border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-900 text-slate-400 uppercase"><tr><th className="p-3">RUT</th><th className="p-3">Nombre</th><th className="p-3">Faena</th><th className="p-3">Centro de costo</th><th className="p-3">Estado</th></tr></thead>
+              <tbody className="divide-y divide-slate-800">{masterData.results.map((person) => <tr key={person.id}><td className="p-3">{person.rut}</td><td className="p-3">{person.nombre_completo}</td><td className="p-3">{person.faena}</td><td className="p-3">{person.centro_costo}</td><td className="p-3">{person.estado_habilitacion ? 'Habilitado' : 'Inhabilitado'}</td></tr>)}</tbody>
+            </table>
+            {!masterData.results.length && <p className="p-6 text-sm text-slate-400">No hay personas para los filtros seleccionados.</p>}
+          </div>
+          <div className="flex justify-between text-xs text-slate-400"><span>{masterData.pagination.total} personas</span><div className="space-x-2"><button disabled={masterFilters.page <= 1} onClick={() => { const next = { ...masterFilters, page: masterFilters.page - 1 }; setMasterFilters(next); loadMasterPeople({ ...next, faena }); }} className="px-3 py-1 bg-slate-800 rounded disabled:opacity-40">Anterior</button><span>Página {masterFilters.page}</span><button disabled={masterFilters.page >= (masterData.pagination.pages || 1)} onClick={() => { const next = { ...masterFilters, page: masterFilters.page + 1 }; setMasterFilters(next); loadMasterPeople({ ...next, faena }); }} className="px-3 py-1 bg-slate-800 rounded disabled:opacity-40">Siguiente</button></div></div>
+        </section>
       )}
     </section>
   );

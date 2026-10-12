@@ -9,6 +9,7 @@ from rest_framework.exceptions import APIException
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import AuthUserSerializer
+from .services.rut_validator import RutValidationError, normalize_rut
 
 
 class AuthenticationApiError(APIException):
@@ -28,10 +29,16 @@ class LoginSerializer(serializers.Serializer):
         password = attrs.get('password')
         from .models import Usuario
 
+        rut_identifier = identifier
+        try:
+            rut_identifier = normalize_rut(identifier)
+        except RutValidationError:
+            pass
+
         authentication_error = None
         with transaction.atomic():
             user = Usuario.objects.select_for_update().filter(
-                models.Q(rut__iexact=identifier)
+                models.Q(rut__iexact=rut_identifier)
                 | models.Q(email_corporativo__iexact=identifier)
             ).first()
 

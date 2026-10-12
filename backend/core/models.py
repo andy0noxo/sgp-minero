@@ -62,6 +62,7 @@ class Maestro_Personas(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     rut = models.CharField(max_length=12, unique=True, db_index=True)
     nombre_completo = models.CharField(max_length=255)
+    faena = models.CharField(max_length=100, default='Sin asignar')
     centro_costo = models.CharField(max_length=100)
     estado_habilitacion = models.BooleanField(default=True)
 

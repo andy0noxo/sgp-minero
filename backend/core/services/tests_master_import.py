@@ -49,13 +49,14 @@ class MasterPersonImportApiTests(TestCase):
         Maestro_Personas.objects.create(
             rut='12345678-5',
             nombre_completo='Nombre anterior',
+            faena='Faena Norte',
             centro_costo='ANTIGUO',
         )
         response = self.authenticate(self.admin).post(
             '/api/v1/master-persons/import/',
             {'file': master_excel([
-                {'rut': '12345678-5', 'nombre_completo': 'Juan Pérez', 'centro_costo': 'MINA-01', 'estado_habilitacion': 'activo'},
-                {'rut': '11111111-1', 'nombre_completo': 'Ana Soto', 'centro_costo': 'MINA-02', 'estado_habilitacion': 'inactivo'},
+                {'rut': '12345678-5', 'nombre_completo': 'Juan Pérez', 'faena': 'Faena Cordillera', 'centro_costo': 'MINA-01', 'estado_habilitacion': 'activo'},
+                {'rut': '11111111-1', 'nombre_completo': 'Ana Soto', 'faena': 'Faena Norte', 'centro_costo': 'MINA-02', 'estado_habilitacion': 'inactivo'},
             ])},
             format='multipart',
         )
@@ -64,14 +65,15 @@ class MasterPersonImportApiTests(TestCase):
         self.assertEqual(data['total_creados'], 1)
         self.assertEqual(data['total_actualizados'], 1)
         self.assertEqual(Maestro_Personas.objects.get(rut='12345678-5').centro_costo, 'MINA-01')
+        self.assertEqual(Maestro_Personas.objects.get(rut='12345678-5').faena, 'Faena Cordillera')
         self.assertFalse(Maestro_Personas.objects.get(rut='11111111-1').estado_habilitacion)
 
     def test_import_applies_valid_rows_and_returns_partial_errors(self):
         response = self.authenticate(self.admin).post(
             '/api/v1/master-persons/import/',
             {'file': master_excel([
-                {'rut': '12345678-5', 'nombre_completo': 'Persona válida', 'centro_costo': 'MINA-01'},
-                {'rut': '12345678-6', 'nombre_completo': 'Persona inválida', 'centro_costo': 'MINA-02'},
+                {'rut': '12345678-5', 'nombre_completo': 'Persona válida', 'faena': 'Faena Cordillera', 'centro_costo': 'MINA-01'},
+                {'rut': '12345678-6', 'nombre_completo': 'Persona inválida', 'faena': 'Faena Norte', 'centro_costo': 'MINA-02'},
             ])},
             format='multipart',
         )
@@ -85,4 +87,30 @@ class MasterPersonImportApiTests(TestCase):
             {'file': master_excel([])},
             format='multipart',
         )
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_lists_master_people_and_filters_by_faena(self):
+        Maestro_Personas.objects.create(
+            rut='12345678-5',
+            nombre_completo='Juan Pérez',
+            faena='Faena Norte',
+            centro_costo='MINA-01',
+        )
+        Maestro_Personas.objects.create(
+            rut='11111111-1',
+            nombre_completo='Ana Soto',
+            faena='Faena Cordillera',
+            centro_costo='MINA-02',
+        )
+
+        response = self.authenticate(self.admin).get(
+            '/api/v1/master-persons/?faena=Faena+Norte'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['data']['pagination']['total'], 1)
+        self.assertEqual(response.data['data']['results'][0]['faena'], 'Faena Norte')
+
+    def test_cargador_cannot_list_master_people(self):
+        response = self.authenticate(self.loader).get('/api/v1/master-persons/')
         self.assertEqual(response.status_code, 403)

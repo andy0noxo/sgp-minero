@@ -141,6 +141,7 @@ docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py check
 docker compose exec backend python manage.py check --deploy
 docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py seed_demo_data
 docker compose exec backend python manage.py test core
 docker compose exec backend python manage.py test core.services.api_tests
 docker compose exec backend python manage.py makemigrations --check --dry-run
@@ -191,22 +192,134 @@ construcción de un servicio.
 
 ### Usuarios y roles
 
-El arranque no crea usuarios de negocio automáticamente. Para crear el
-superusuario del panel Django:
+En desarrollo, el arranque puede crear automáticamente los roles y usuarios
+demo mediante `SEED_DEMO_DATA=True`. El seed es idempotente: puede ejecutarse
+varias veces sin duplicar usuarios ni cambiar sus contraseñas existentes.
+
+El archivo `.env.example` incluye valores locales de demostración. Después de
+copiarlo a `.env`, cambia las contraseñas antes de compartir el entorno:
+
+```env
+SEED_DEMO_DATA=True
+SEED_DEMO_MASTER_DATA=True
+DJANGO_SUPERUSER_RUT=11111111-1
+DJANGO_SUPERUSER_EMAIL=admin@minera.local
+DJANGO_SUPERUSER_PASSWORD=cambiar-superuser-local
+DEMO_CARGADOR_RUT=22222222-2
+DEMO_CARGADOR_EMAIL=cargador@minera.local
+DEMO_CARGADOR_PASSWORD=cambiar-cargador-local
+DEMO_CONSULTOR_RUT=33333333-3
+DEMO_CONSULTOR_EMAIL=consultor@minera.local
+DEMO_CONSULTOR_PASSWORD=cambiar-consultor-local
+```
+
+Al iniciar el backend local se crean:
+
+| Usuario | Rol | Uso |
+| --- | --- | --- |
+| `admin@minera.local` | Administrador y superusuario | Panel Django y mantenedor |
+| `cargador@minera.local` | Cargador | Carga masiva y Mis Cargas |
+| `consultor@minera.local` | Consultor | Dashboard corporativo |
+
+Con `SEED_DEMO_MASTER_DATA=True` también se crean 75 personas demo en el
+Mantenedor, distribuidas entre `Faena Cordillera`, `Faena Norte` y
+`Faena Central`, cinco centros de costo y estados habilitados e inhabilitados.
+La cantidad permite probar la paginación y los filtros sin subir manualmente
+un archivo. El seed actualiza solamente sus RUT demo deterministas y no elimina
+ni modifica otros registros.
+
+El seed solo se ejecuta con `DJANGO_DEBUG=True`. En producción debe mantenerse
+`SEED_DEMO_DATA=False` y `SEED_DEMO_MASTER_DATA=False`. Los datos reales se
+cargan desde el Mantenedor mediante CSV o XLSX. Se debe crear el usuario
+administrativo de forma
+segura con:
 
 ```powershell
 docker compose exec backend python manage.py createsuperuser
 ```
 
-Después ingresa a <http://localhost:8000/admin/> y crea o configura los roles
-`Administrador`, `Cargador` y `Consultor`, asociándolos a los usuarios
-correspondientes.
+El comando solicita interactivamente el RUT, correo corporativo y contraseña.
+Nunca se deben configurar contraseñas demo ni credenciales compartidas en el
+entorno productivo.
 
 **Accesos Disponibles (Entorno Local):**
 
-* Frontend (Mapper UI): `http://localhost:5173`  
-* Backend (API REST): `http://localhost:8000/api/v1/`  
-* Base de Datos (Conexión TCP): `localhost:5432`
+* Frontend (punto de entrada y login): `http://localhost:5173/`
+* Administración Django: `http://localhost:8000/admin/`
+* Login del panel Django: `http://localhost:8000/admin/login/`
+* API base: `http://localhost:8000/api/v1/`
+* Healthcheck público: `http://localhost:8000/api/v1/health/`
+* PostgreSQL local (no es una URL web): `localhost:5432`
+
+### URLs y control de acceso
+
+El selector superior `Faena` representa el contexto operacional de la interfaz
+y filtra los registros del Dashboard del Consultor. `faena` y `centro_costo`
+son dimensiones separadas: la primera identifica la operación minera y la
+segunda la imputación contable. La tabla `Maestro_Personas` exige ambos datos;
+al procesar un viaje, la faena se obtiene del registro maestro de la persona y
+se conserva en el registro de viaje. Los datos demo incluyen las faenas
+`Faena Cordillera`, `Faena Norte` y `Faena Central`.
+
+El centro de compra, canal de emisión, agencia o proveedor del pasaje no se
+incluyen en este MVP porque la documentación no define todavía su semántica ni
+su catálogo oficial.
+
+El frontend actual es una SPA sin enrutador URL. Por eso solo existe la ruta
+web `/`; después del login, el menú cambia las vistas dentro de la misma página
+y no crea URLs independientes como `/dashboard` o `/admin-panel`. Cada rol
+inicia en su primer módulo autorizado: Administrador en Mantenedor de
+Personas, Cargador en Carga Masiva y Consultor en Dashboard.
+
+Sin sesión, `http://localhost:5173/` muestra el formulario de login. La sesión
+se recupera mediante la cookie de refresh; si no existe o es inválida, el
+frontend permanece en el login. El backend protege las operaciones mediante
+JWT y devuelve `401` si se solicita un endpoint protegido sin autenticación.
+
+| Método | URL | Acceso |
+| --- | --- | --- |
+| `GET` | `/api/v1/health/` | Público |
+| `POST` | `/api/v1/auth/login/` | Público |
+| `POST` | `/api/v1/auth/refresh/` | Cookie de refresh |
+| `POST` | `/api/v1/auth/logout/` | Público; elimina la cookie de refresh |
+| `GET` | `/api/v1/auth/me/` | Usuario autenticado |
+| `POST` | `/api/v1/uploads/headers/` | Cargador |
+| `POST` | `/api/v1/uploads/process/` | Cargador |
+| `GET` | `/api/v1/uploads/history/` | Cargador |
+| `GET` | `/api/v1/uploads/history/<lote_id>/` | Cargador propietario |
+| `POST` | `/api/v1/master-persons/import/` | Administrador |
+| `GET` | `/api/v1/master-persons/` | Administrador |
+| `GET` | `/api/v1/dashboard/records/` | Consultor |
+
+El Dashboard es exclusivo del rol Consultor. El Administrador no debe intentar
+abrirlo desde el navegador: su módulo autorizado es Mantenedor de Personas.
+
+Los métodos no definidos para una vista protegida responden `405`, y un usuario
+autenticado con un rol incorrecto recibe `403`. La URL `/admin/` corresponde al
+panel administrativo de Django y requiere autenticación; no forma parte de la
+SPA.
+
+Para comprobar el comportamiento de una API protegida sin iniciar sesión:
+
+```powershell
+curl.exe -i http://localhost:8000/api/v1/auth/me/
+curl.exe -i http://localhost:8000/api/v1/dashboard/records/
+```
+
+Ambas solicitudes deben responder `401 Unauthorized`.
+
+### Formatos aceptados para el RUT de inicio de sesión
+
+El login acepta el RUT con o sin separadores:
+
+```text
+12.345.678-5
+12345678-5
+123456785
+```
+
+El backend normaliza el valor al formato canónico `12345678-5` antes de
+buscar al usuario. El correo corporativo mantiene su comportamiento normal.
 
 El rol Cargador dispone de las opciones **Carga Masiva (Excel)** y **Mis
 Cargas**. Esta última consulta el historial de sus lotes, sus totales y el

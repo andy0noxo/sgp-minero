@@ -6,7 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from core.models import LoteCarga, Maestro_Personas, Rol, Usuario
+from core.models import LoteCarga, Maestro_Personas, RegistroViaje, Rol, Usuario
 
 
 def excel_upload(rows):
@@ -29,6 +29,7 @@ class UploadApiTests(TestCase):
         Maestro_Personas.objects.create(
             rut='12345678-5',
             nombre_completo='María Pérez',
+            faena='Faena Cordillera',
             centro_costo='MINA-01',
         )
 
@@ -69,6 +70,10 @@ class UploadApiTests(TestCase):
         self.assertEqual(response.data['data']['total_procesados'], 1)
         self.assertEqual(response.data['data']['total_errores'], 1)
         self.assertEqual(response.data['data']['detalle_errores'][0]['code'], 'INVALID_RUT')
+        self.assertEqual(
+            RegistroViaje.objects.get().payload_datos['faena'],
+            'Faena Cordillera',
+        )
 
     def test_upload_requires_file(self):
         response = self.client.post('/api/v1/uploads/headers/', {}, format='multipart')

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import UploadExcelView from './UploadExcelView';  
 import DashboardView from './DashboardView';
 import UploadsHistoryView from './UploadsHistoryView';
 
 const MainLayout = ({ user, onLogout, children }) => {
   const [faena, setFaena] = useState('Faena Cordillera');
-  const defaultMenu = user.role === 'Cargador' ? 'upload' : 'dashboard';
+  const defaultMenu = user.role === 'Consultor' ? 'dashboard' : 'upload';
   const [activeMenu, setActiveMenu] = useState(defaultMenu);
 
   const navigationItems = [
@@ -15,6 +15,13 @@ const MainLayout = ({ user, onLogout, children }) => {
   ];
 
   const filteredMenu = navigationItems.filter(item => item.roles.includes(user.role));
+  const allowedMenuIds = new Set(filteredMenu.map(item => item.id));
+
+  useEffect(() => {
+    if (!filteredMenu.some(item => item.id === activeMenu)) {
+      setActiveMenu(defaultMenu);
+    }
+  }, [activeMenu, defaultMenu, user.role]);
 
   const roleBadges = {
     Administrador: { label: 'Administrador', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
@@ -43,6 +50,7 @@ const MainLayout = ({ user, onLogout, children }) => {
               onChange={(e) => setFaena(e.target.value)}
               className="bg-transparent text-xs font-semibold text-amber-400 focus:outline-none cursor-pointer"
             >
+              <option value="" className="bg-slate-900 text-white">Todas</option>
               <option value="Faena Cordillera" className="bg-slate-900 text-white">Faena Cordillera</option>
               <option value="Faena Norte" className="bg-slate-900 text-white">Faena Norte</option>
               <option value="Faena Central" className="bg-slate-900 text-white">Faena Central</option>
@@ -100,12 +108,19 @@ const MainLayout = ({ user, onLogout, children }) => {
         </aside>
 
         <main className="flex-1 bg-slate-950 p-8 overflow-y-auto">
-          {activeMenu === 'upload' ? (
-            <UploadExcelView role={user.role} />
+          {!allowedMenuIds.has(activeMenu) ? (
+            <div className="border border-rose-900 bg-rose-950/40 rounded-xl p-8 text-center max-w-xl mx-auto mt-16">
+              <h2 className="text-base font-bold text-rose-200 mb-2">Módulo no disponible</h2>
+              <p className="text-xs text-rose-300">
+                Tu rol no tiene permisos para acceder a este módulo.
+              </p>
+            </div>
+          ) : activeMenu === 'upload' ? (
+            <UploadExcelView role={user.role} faena={faena} />
           ) : activeMenu === 'uploads-history' ? (
             <UploadsHistoryView />
           ) : activeMenu === 'dashboard' ? (
-            <DashboardView />
+            <DashboardView faena={faena} />
           ) : children ? (
             children
           ) : (

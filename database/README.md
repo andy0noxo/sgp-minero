@@ -15,11 +15,13 @@ desincronice del ORM, las pruebas y el despliegue.
 La carpeta `database` se conserva como frontera de infraestructura para:
 
 - documentar la operación de PostgreSQL;
-- agregar en el futuro scripts idempotentes de seeds o mantenimiento;
 - centralizar instrucciones de respaldo, restauración o migración operativa.
 
-Los scripts futuros no deben contener credenciales, datos reales ni
-definiciones de tablas que ya pertenezcan a las migraciones.
+La inicialización de roles y usuarios demo pertenece al backend y se ejecuta
+mediante `seed_demo_data` cuando `SEED_DEMO_DATA=True`; no se deben crear
+usuarios ni credenciales desde scripts SQL. Los scripts operativos futuros no
+deben contener credenciales, datos reales ni definiciones de tablas que ya
+pertenezcan a las migraciones.
 
 ## Creación local con Docker
 

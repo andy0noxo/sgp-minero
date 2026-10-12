@@ -17,6 +17,7 @@ def get_dashboard_records(filters):
     records = RegistroViaje.objects.select_related('lote').all()
     start_date = filters.get('from')
     end_date = filters.get('to')
+    operation = filters.get('faena')
     cost_center = filters.get('centro_costo')
 
     if start_date:
@@ -25,6 +26,11 @@ def get_dashboard_records(filters):
         records = records.filter(fecha_procesamiento__date__lte=end_date)
     if filters.get('estado'):
         records = records.filter(estado_validacion=filters['estado'])
+    if operation:
+        records = [
+            record for record in records
+            if str(record.payload_datos.get('faena', '')).casefold() == operation.casefold()
+        ]
     if cost_center:
         records = [
             record for record in records
