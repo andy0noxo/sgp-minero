@@ -192,6 +192,34 @@ estado (`APROBADO` o `RECHAZADO`). También permite exportar a CSV los registros
 actualmente renderizados en la página, sin enviar datos adicionales al
 servidor ni persistir el archivo exportado.
 
+## Alcance MVP aprobado y decisiones funcionales
+
+La aplicación frontend es una SPA React/Vite. En la versión actual no utiliza
+React Router ni crea URLs independientes para cada módulo; la navegación
+interna y la visibilidad de las vistas se controlan según el rol, mientras que
+la autorización efectiva se aplica en el backend mediante JWT y permisos DRF.
+
+`faena` es obligatoria en `Maestro_Personas` y representa la operación minera.
+`centro_costo` representa la imputación contable. Son dimensiones distintas y
+no deben utilizarse como sinónimos. `fecha_procesamiento` corresponde al
+momento de procesamiento de la carga; `fecha_vuelo` corresponde a la fecha
+del viaje informada por la planilla cuando está disponible. Actualmente el
+filtro implementado en este endpoint utiliza la fecha de procesamiento.
+
+La exportación CSV del MVP se realiza sobre los registros actualmente
+renderizados en la página y con los filtros aplicados. No es todavía una
+exportación masiva de todo el resultado paginado.
+
+El cifrado de PII se implementa con Fernet, basado en AES-128-CBC y
+HMAC-SHA256. La llave se obtiene desde `AES_SECRET_KEY`; el término AES se
+utiliza para describir el algoritmo subyacente y Fernet para referirse a la
+implementación concreta.
+
+Gestión de Usuarios y Auditoría forman parte del MVP aprobado y se
+implementarán como superficies protegidas por RBAC. El centro de emisión, la
+agencia, el canal de compra y el sitio operacional quedan fuera del MVP hasta
+contar con semántica y catálogos oficiales.
+
 ## Salud y despliegue
 
 `GET /api/v1/health/` es un endpoint público de salud para el orquestador o

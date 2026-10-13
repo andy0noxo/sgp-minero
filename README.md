@@ -330,6 +330,30 @@ El rol Consultor dispone del **Dashboard corporativo**, con filtros por fecha,
 centro de costo y estado, paginación de hasta 50 registros y exportación CSV
 de la página actualmente renderizada.
 
+### Alcance documental vigente del MVP
+
+Las decisiones funcionales vigentes son las siguientes:
+
+- La aplicación frontend es una SPA React/Vite y actualmente no utiliza React
+  Router ni URLs independientes por módulo.
+- `faena` es una dimensión operacional obligatoria de `Maestro_Personas`;
+  `centro_costo` representa la imputación contable y no debe confundirse con
+  la faena.
+- `fecha_procesamiento` representa el momento en que el sistema procesa una
+  carga. `fecha_vuelo` representa la fecha del viaje informada por la
+  planilla cuando ese campo está disponible.
+- La exportación CSV del MVP contiene los registros actualmente renderizados
+  en la página y con los filtros aplicados; no es todavía una exportación
+  masiva de todos los resultados.
+- El cifrado de PII se implementa con Fernet, basado en AES-128-CBC y
+  HMAC-SHA256, mediante la llave `AES_SECRET_KEY`.
+- Gestión de Usuarios y Auditoría forman parte del alcance del MVP. Sus
+  superficies funcionales y endpoints se incorporarán bajo permisos RBAC del
+  Administrador.
+- Centro de emisión, agencia, canal de compra y sitio operacional quedan
+  fuera del MVP hasta que exista una definición empresarial y un catálogo
+  oficial.
+
 La carpeta [`database`](database/README.md) documenta la operación de
 PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las
 migraciones de Django en `backend/core/migrations/`.
