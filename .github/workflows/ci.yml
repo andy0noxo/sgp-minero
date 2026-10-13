@@ -1,0 +1,71 @@
+name: SGP-Minero CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  frontend-checks:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: './frontend/pnpm-lock.yaml'
+
+      - name: Instalar dependencias
+        run: pnpm install
+
+      - name: Ejecutar Linter
+        # Si usas oxlint como sugirió la revisión o eslint estándar
+        run: pnpm run lint || npx oxlint
+
+      - name: Comprobar Build (Compilación)
+        run: pnpm run build
+
+  backend-checks:
+    name: Backend Pytest & BD
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Crear archivo .env de pruebas
+        # Esto es vital para que Docker no falle al buscar variables de entorno
+        run: |
+          touch .env
+          echo "DB_NAME=sgp_minero_db" >> .env
+          echo "DB_USER=usuario_local" >> .env
+          echo "DB_PASSWORD=password_seguro_local" >> .env
+          echo "DJANGO_SECRET_KEY=clave-secreta-para-testing-123" >> .env
+          echo "AES_SECRET_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" >> .env
+          echo "DJANGO_DEBUG=True" >> .env
+          echo "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend" >> .env
+
+      - name: Levantar contenedores Docker
+        # Levanta solo la BD y el Backend usando tu propio docker-compose
+        run: docker compose up --build -d db backend
+
+      - name: Ejecutar Pruebas Automatizadas (Pytest)
+        # El flag -T es necesario en GitHub Actions para que no pida terminal interactiva
+        run: docker compose exec -T backend pytest
+        
+      - name: Apagar contenedores
+        if: always()
+        run: docker compose down -v
