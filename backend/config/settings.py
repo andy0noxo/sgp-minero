@@ -114,7 +114,14 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
+# Password Hashers (SGP-13)
+# Exige Argon2 como algoritmo principal de seguridad
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
@@ -170,8 +177,11 @@ REFRESH_TOKEN_COOKIE_SAMESITE = env('REFRESH_TOKEN_COOKIE_SAMESITE')
 if not DEBUG:
     if not ALLOWED_HOSTS:
         raise ValueError('DJANGO_ALLOWED_HOSTS es obligatorio en producción.')
+    if not CORS_ALLOWED_ORIGINS:
+        raise ValueError('CORS_ALLOWED_ORIGINS es obligatorio en producción para evitar consumo de API no autorizado.')
     if not env('DJANGO_COOKIE_SECURE'):
         raise ValueError('DJANGO_COOKIE_SECURE debe ser True en producción.')
+    
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -180,6 +190,7 @@ if not DEBUG:
 
 REFRESH_TOKEN_COOKIE_NAME = 'sgp_refresh_token'
 REFRESH_TOKEN_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
+REFRESH_TOKEN_COOKIE_HTTPONLY = True # <-- Agregar esta línea para prevenir ataques XSS
 REFRESH_TOKEN_COOKIE_PATH = '/api/v1/auth/'
 MAX_FAILED_LOGIN_ATTEMPTS = env.int('MAX_FAILED_LOGIN_ATTEMPTS', default=3)
 LOGIN_LOCKOUT_MINUTES = env.int('LOGIN_LOCKOUT_MINUTES', default=5)
