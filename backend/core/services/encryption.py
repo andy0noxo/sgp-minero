@@ -7,13 +7,13 @@ class EncryptionConfigurationError(RuntimeError):
 
 
 def _fernet():
-    key = getattr(settings, 'AES_SECRET_KEY', '')
+    key = getattr(settings, "AES_SECRET_KEY", "")
     if not key:
-        raise EncryptionConfigurationError('AES_SECRET_KEY no está configurada.')
+        raise EncryptionConfigurationError("AES_SECRET_KEY no está configurada.")
     try:
         return Fernet(key.encode() if isinstance(key, str) else key)
     except (TypeError, ValueError) as exc:
-        raise EncryptionConfigurationError('AES_SECRET_KEY no es válida.') from exc
+        raise EncryptionConfigurationError("AES_SECRET_KEY no es válida.") from exc
 
 
 def encrypt_pii(value):
@@ -28,4 +28,4 @@ def decrypt_pii(token):
     try:
         return _fernet().decrypt(str(token).encode()).decode()
     except InvalidToken as exc:
-        raise EncryptionConfigurationError('El token PII no es válido.') from exc
+        raise EncryptionConfigurationError("El token PII no es válido.") from exc

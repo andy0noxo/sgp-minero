@@ -12,8 +12,13 @@ duplican definiciones de tablas en archivos SQL.
 ## Autenticación y autorización
 
 `POST /api/v1/auth/login/` recibe `identifier` (RUT o correo corporativo) y
-`password`. Devuelve un access token en JSON y establece el refresh token en
-la cookie HttpOnly `sgp_refresh_token` con `SameSite=Strict`.
+`password`. Valida la contraseña utilizando **`Argon2PasswordHasher`**
+(`argon2-cffi`) como algoritmo primario, devuelve un `access` token en JSON
+(para mantener exclusivamente en memoria RAM del cliente) y establece el
+`refresh` token en la cookie `HttpOnly` `sgp_refresh_token` (`SameSite=Strict`
+por defecto en entorno local y configurable mediante
+`REFRESH_TOKEN_COOKIE_SAMESITE=None` + `DJANGO_COOKIE_SECURE=True` en entornos
+Cloud cross-origin).
 
 Las peticiones autenticadas utilizan:
 
@@ -29,10 +34,13 @@ externos, por ejemplo `12.345.678-5`, `12345678-5` y `123456785`. El backend
 normaliza el valor al formato canónico antes de consultar al usuario.
 
 Los roles implementados son `Administrador`, `Cargador` y `Consultor`. La
-autorización real se ejecuta en el backend mediante permisos DRF; las
-restricciones visuales del frontend no sustituyen estos permisos. Después de
-tres intentos inválidos consecutivos, la cuenta se bloquea temporalmente.
-Los errores de API mantienen la estructura:
+autorización real se ejecuta en el backend mediante permisos DRF
+(`IsAdministradorRole`, `IsCargadorRole`, `IsConsultorRole`); las restricciones
+visuales y rutas del frontend no sustituyen estos permisos. Después de tres
+intentos inválidos consecutivos (`MAX_FAILED_LOGIN_ATTEMPTS=3`), la cuenta se
+bloquea temporalmente durante cinco minutos (`LOGIN_LOCKOUT_MINUTES=5`) de forma
+transaccional (`select_for_update()`). Los errores de API mantienen la
+estructura:
 
 ```json
 {
@@ -113,25 +121,28 @@ SEED_DEMO_DATA=False
 | `GET` | `/api/v1/master-persons/` | Administrador |
 | `GET` | `/api/v1/dashboard/records/` | Consultor |
 
-Las rutas protegidas responden `401` sin JWT y `403` cuando el usuario
-autenticado no posee el rol requerido. El frontend es una SPA y actualmente usa una única URL web (`/`); sus módulos
-se muestran dentro de esa página tras iniciar sesión. El Administrador inicia
-en Mantenedor de Personas, el Cargador en Carga Masiva y el Consultor en el
-Dashboard. El Dashboard es exclusivo del Consultor, tanto en frontend como en
-backend.
+Las rutas protegidas responden `401` sin JWT, `403` cuando el usuario
+autenticado no posee el rol requerido y `405` ante métodos HTTP no habilitados.
+El frontend es una SPA React/Vite enrutada con `react-router-dom`
+(`BrowserRouter` + `ProtectedRoute`) sobre `/`, `/carga`, `/historial` y
+`/dashboard`. Al autenticarse en `/`, el Administrador y el Cargador son
+dirigidos a `/carga` (Mantenedor de Personas o Carga Masiva respectivamente) y
+el Consultor a `/dashboard`. El Dashboard es exclusivo del Consultor, tanto en
+frontend como en backend.
 
-El selector superior `Faena` es un filtro operacional del Dashboard. Sus
-valores demo son `Faena Cordillera`, `Faena Norte` y `Faena Central`. No
-reemplaza al campo `centro_costo`: `faena` identifica la operación minera y
-`centro_costo` la imputación contable. Al procesar un viaje, la faena se toma
-del registro correspondiente del maestro y se guarda en `payload_datos`.
+El selector superior `Faena` actúa como filtro operacional contextual tanto en
+el Mantenedor de Personas como en el Dashboard. Sus valores demo son
+`Faena Cordillera`, `Faena Norte` y `Faena Central`. No reemplaza al campo
+`centro_costo`: `faena` identifica la operación minera y `centro_costo` la
+imputación contable. Al procesar un viaje, la faena se toma del registro
+correspondiente del maestro y se guarda en `payload_datos`.
 
 ## Carga y procesamiento de viajes
 
 El rol `Cargador` utiliza estos endpoints protegidos:
 
 - `POST /api/v1/uploads/headers/` con el campo multipart `file` para leer
-  solamente los encabezados de un archivo `.xlsx`.
+  solamente los encabezados (`nrows=0`) de un archivo `.xlsx`.
 - `POST /api/v1/uploads/process/` con los campos multipart `file` y `mapping`.
   El mapper exige `map_rut` y `map_nombre`.
 
@@ -140,9 +151,10 @@ devuelve `207` y conserva las filas válidas. La respuesta contiene
 `total_filas`, `total_procesados`, `total_errores` y `detalle_errores`.
 
 Se validan el formato y el dígito verificador del RUT mediante Módulo 11, la
-identidad contra `Maestro_Personas`, los archivos corruptos o vacíos y el
-límite de 10 MB. El RUT y el nombre se cifran con Fernet antes de persistirse
-en `RegistroViaje.payload_datos` como JSONB.
+identidad y habilitación contra `Maestro_Personas`, los archivos corruptos o
+vacíos y el límite de 10 MB. El RUT y el nombre se cifran con Fernet antes de
+persistirse en `RegistroViaje.payload_datos` como JSONB, eliminando del payload
+las columnas originales en texto plano.
 
 El Cargador puede consultar sus propias cargas mediante:
 
@@ -163,7 +175,8 @@ El rol `Administrador` puede sincronizar `Maestro_Personas` mediante
 obligatorias son `rut`, `nombre_completo`, `faena` y `centro_costo`;
 `estado_habilitacion` es opcional y por defecto queda activa. La respuesta
 informa registros creados, actualizados y rechazados, y devuelve `207` si el
-resultado es parcial. La operación queda registrada en auditoría.
+resultado es parcial. La operación queda registrada en `RegistroAuditoria`
+(`IMPORTAR_MAESTRO_PERSONAS`).
 
 También puede consultar la tabla mediante `GET /api/v1/master-persons/`. La
 respuesta es paginada y admite `faena`, `search`, `estado`, `page` y
@@ -180,24 +193,25 @@ GET /api/v1/dashboard/records/
 Los parámetros disponibles son `from`, `to`, `faena`, `centro_costo`, `estado`,
 `page` y `page_size`. El endpoint es de solo lectura. El filtro `faena`
 compara contra la faena asociada a la persona en el maestro y propagada al
-registro de viaje. Los datos PII se descifran
-únicamente en memoria al construir la respuesta y permanecen cifrados en
-PostgreSQL JSONB. Cada resultado incluye el archivo de origen, la fila del
-Excel, el estado, la fecha de procesamiento y el cargador responsable.
-El filtro `estado` solo acepta `APROBADO` o `RECHAZADO`; otros valores devuelven
-`400` con el error `INVALID_FILTER`.
+registro de viaje. Los datos PII se descifran únicamente en memoria al
+construir la respuesta y permanecen cifrados en PostgreSQL JSONB. Cada
+resultado incluye el archivo de origen, la fila del Excel, el estado, la fecha
+de procesamiento y el cargador responsable. El filtro `estado` solo acepta
+`APROBADO` o `RECHAZADO`; otros valores devuelven `400` con el error
+`INVALID_FILTER`.
 
 El frontend permite filtrar por faena, rango de fechas, centro de costo y
-estado (`APROBADO` o `RECHAZADO`). También permite exportar a CSV los registros
-actualmente renderizados en la página, sin enviar datos adicionales al
-servidor ni persistir el archivo exportado.
+estado (`APROBADO` o `RECHAZADO`). También permite exportar a CSV (UTF-8 BOM)
+los registros actualmente renderizados en la página, sin enviar datos
+adicionales al servidor ni persistir el archivo exportado.
 
 ## Alcance MVP aprobado y decisiones funcionales
 
-La aplicación frontend es una SPA React/Vite. En la versión actual no utiliza
-React Router ni crea URLs independientes para cada módulo; la navegación
-interna y la visibilidad de las vistas se controlan según el rol, mientras que
-la autorización efectiva se aplica en el backend mediante JWT y permisos DRF.
+La aplicación frontend es una SPA React/Vite que utiliza `react-router-dom`
+(`BrowserRouter` + `ProtectedRoute`) para gestionar las rutas `/`, `/carga`,
+`/historial` y `/dashboard` según el rol autenticado, mientras que la
+autorización efectiva se aplica obligatoriamente en el backend mediante JWT y
+permisos DRF.
 
 `faena` es obligatoria en `Maestro_Personas` y representa la operación minera.
 `centro_costo` representa la imputación contable. Son dimensiones distintas y
@@ -213,12 +227,20 @@ exportación masiva de todo el resultado paginado.
 El cifrado de PII se implementa con Fernet, basado en AES-128-CBC y
 HMAC-SHA256. La llave se obtiene desde `AES_SECRET_KEY`; el término AES se
 utiliza para describir el algoritmo subyacente y Fernet para referirse a la
-implementación concreta.
+implementación concreta autenticada.
 
-Gestión de Usuarios y Auditoría forman parte del MVP aprobado y se
-implementarán como superficies protegidas por RBAC. El centro de emisión, la
-agencia, el canal de compra y el sitio operacional quedan fuera del MVP hasta
-contar con semántica y catálogos oficiales.
+**Gestión de Usuarios (`SGP-28`) y Auditoría Operativa (`SGP-29`):** Ambos
+módulos forman parte del alcance activo en desarrollo del Sprint 3. En el
+estado actual del backend, las entidades `Rol`, `Usuario` (con `Argon2`) y
+`RegistroAuditoria` ya existen y persisten los eventos críticos de cargas y
+sincronización de maestro (siendo administrables temporalmente desde **Django
+Admin `/admin/`**), quedando pendiente exponer los endpoints REST protegidos
+(`/api/v1/users/` y `/api/v1/audit-logs/`) para conectar `UsersView.jsx` y
+`AuditView.jsx`. Adicionalmente, bajo `US-EXTRA-01 / SGP-30` se contempla
+extender la respuesta de pre-lectura y procesamiento de cargas para alimentar el
+asistente visual paso a paso solicitado por el Profesor Guía. El centro de
+emisión, la agencia, el canal de compra y el sitio operacional quedan fuera del
+MVP hasta contar con semántica y catálogos oficiales.
 
 ## Salud y despliegue
 
@@ -235,9 +257,10 @@ gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}
 
 El script `production_entrypoint.sh` ejecuta las migraciones antes de iniciar
 Gunicorn y utiliza el puerto `PORT` entregado por el proveedor cloud. En
-desarrollo, `docker-compose.yml` reemplaza este comando por `runserver`.
-Para Render u otra plataforma equivalente se deben configurar las variables
-de entorno directamente en el panel de secretos:
+desarrollo, `docker-compose.yml` reemplaza este comando por `entrypoint.sh`
+(`migrate` + `seed_demo_data` + `runserver`). Para Render u otra plataforma
+equivalente se deben configurar las variables de entorno directamente en el
+panel de secretos:
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=False`
@@ -270,17 +293,29 @@ python manage.py check --deploy
 
 ## Cobertura de QA
 
-La suite automatizada cubre:
+La suite automatizada actual cuenta con **34 pruebas** distribuidas en 5 módulos
+(`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
+`core/services/tests_master_import.py` y `core/services/tests_dashboard.py`) y
+ejecutadas automáticamente en GitHub Actions (`.github/workflows/ci.yml`),
+cubriendo:
 
-- RUT validation, including valid, invalid, and alphanumeric inputs.
-- Name normalization and identity matching.
-- Fernet encryption/decryption and invalid configuration handling.
-- Excel header parsing and invalid-file handling.
-- Upload processing, partial `207` feedback, and persistence.
-- Upload history, batch detail, rejection persistence, and per-user isolation.
-- Administrator master import, UPSERT behavior, partial errors, and RBAC.
-- Consultant dashboard filters, pagination, read-only access, and in-memory
-  PII decryption.
+- Autenticación JWT, login por correo o RUT en múltiples formatos, renovación y
+  cierre de sesión por cookie `HttpOnly`, bloqueo tras 3 intentos fallidos y
+  control RBAC (`core/tests.py`).
+- Idempotencia del comando `seed_demo_data`, preservación de contraseñas y
+  bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
+- Validación matemática de RUT (Módulo 11), normalización de nombres sin tildes
+  ni espacios sobrantes y coincidencia contra el maestro (`core/services/tests.py`).
+- Cifrado y descifrado autenticado con `Fernet` y manejo de llaves inválidas o
+  ausentes (`core/services/tests.py`).
+- Lectura exclusiva de encabezados Excel (`nrows=0`), rechazo de archivos
+  corruptos/vacíos/mayores a 10 MB, procesamiento con respuesta parcial `207`,
+  persistencia cifrada en `JSONB`, historial de cargas y aislamiento estricto
+  por usuario (`core/services/api_tests.py`).
+- Importación masiva del Administrador (`UPSERT` CSV/XLSX), errores parciales,
+  listado paginado y permisos RBAC (`core/services/tests_master_import.py`).
+- Filtros del Dashboard del Consultor, paginación, acceso exclusivo de solo
+  lectura y descifrado PII únicamente en memoria RAM (`core/services/tests_dashboard.py`).
 
 Para ejecutar todos los archivos de pruebas descubiertos por pytest:
 
@@ -288,8 +323,9 @@ Para ejecutar todos los archivos de pruebas descubiertos por pytest:
 docker compose exec backend pytest
 ```
 
-La prueba de rendimiento con 5.000 filas queda intencionalmente pendiente y
-no forma parte de esta ejecución de QA.
+La prueba de rendimiento con 5.000 filas (`US-14 / SGP-26`) queda programada
+como hito específico de certificación de carga del Sprint 3 y no forma parte de
+la corrida rápida de CI.
 
 ## Dominio y separación de base de datos
 
@@ -302,7 +338,8 @@ las migraciones de Django; nunca deben versionarse datos de producción,
 credenciales ni llaves de cifrado.
 
 Las entidades principales son `Rol`, `Usuario`, `Maestro_Personas`,
-`LoteCarga`, `RegistroViaje` y `RegistroAuditoria`.
+`LoteCarga`, `RegistroViaje` y `RegistroAuditoria` (registradas también en
+`core/admin.py` para gestión en `/admin/`).
 
 ## Desarrollo local
 
@@ -350,6 +387,9 @@ docker compose exec backend python manage.py check
 docker compose exec backend python manage.py check --deploy
 docker compose exec backend python manage.py createsuperuser
 docker compose exec backend python manage.py makemigrations --check --dry-run
+docker compose exec backend pytest
+docker compose exec backend flake8 .
+docker compose exec backend black --check .
 docker compose exec backend python manage.py test core
 docker compose exec backend python manage.py test core.services.api_tests
 docker compose down
@@ -357,4 +397,5 @@ docker compose down
 
 El servicio `backend` ejecuta `migrate --noinput` automáticamente mediante
 `backend/entrypoint.sh` antes de iniciar `runserver`. La imagen define
-Gunicorn para producción, pero Compose utiliza `runserver` en local.
+Gunicorn (`production_entrypoint.sh`) para producción, pero Compose utiliza
+`runserver` en local.

@@ -20,9 +20,9 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, []),
     CORS_ALLOWED_ORIGINS=(list, []),
     DJANGO_COOKIE_SECURE=(bool, False),
-    REFRESH_TOKEN_COOKIE_SAMESITE=(str, 'Strict'),
+    REFRESH_TOKEN_COOKIE_SAMESITE=(str, "Strict"),
 )
-environ.Env.read_env(Path(__file__).resolve().parent.parent.parent / '.env')
+environ.Env.read_env(Path(__file__).resolve().parent.parent.parent / ".env")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,63 +32,63 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('DJANGO_SECRET_KEY')
-DEBUG = env('DJANGO_DEBUG')
-ALLOWED_HOSTS = env('DJANGO_ALLOWED_HOSTS')
-AES_SECRET_KEY = env('AES_SECRET_KEY')
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+DEBUG = env("DJANGO_DEBUG")
+ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
+AES_SECRET_KEY = env("AES_SECRET_KEY")
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'corsheaders',
-    'core',
-    'rest_framework',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "corsheaders",
+    "core",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
-    'default': env.db(
-        'DATABASE_URL',
+    "default": env.db(
+        "DATABASE_URL",
         default=(
             f"postgres://{env('DB_USER')}:{env('DB_PASSWORD')}"
             f"@{env('DB_HOST')}:{env('DB_PORT')}/{env('DB_NAME')}"
@@ -102,33 +102,36 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
+        ),
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 # Password Hashers (SGP-13)
 # Exige Argon2 como algoritmo principal de seguridad
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.Argon2PasswordHasher',
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
-    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
-    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
 ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -138,59 +141,62 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
 
-AUTH_USER_MODEL = 'core.Usuario'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+AUTH_USER_MODEL = "core.Usuario"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Configuración general de Django REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'EXCEPTION_HANDLER': 'core.exceptions.api_exception_handler',
+    "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
-CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
-SESSION_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
-CSRF_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
-REFRESH_TOKEN_COOKIE_SAMESITE = env('REFRESH_TOKEN_COOKIE_SAMESITE')
+SESSION_COOKIE_SECURE = env("DJANGO_COOKIE_SECURE")
+CSRF_COOKIE_SECURE = env("DJANGO_COOKIE_SECURE")
+REFRESH_TOKEN_COOKIE_SAMESITE = env("REFRESH_TOKEN_COOKIE_SAMESITE")
 
 if not DEBUG:
     if not ALLOWED_HOSTS:
-        raise ValueError('DJANGO_ALLOWED_HOSTS es obligatorio en producción.')
+        raise ValueError("DJANGO_ALLOWED_HOSTS es obligatorio en producción.")
     if not CORS_ALLOWED_ORIGINS:
-        raise ValueError('CORS_ALLOWED_ORIGINS es obligatorio en producción para evitar consumo de API no autorizado.')
-    if not env('DJANGO_COOKIE_SECURE'):
-        raise ValueError('DJANGO_COOKIE_SECURE debe ser True en producción.')
-    
+        raise ValueError(
+            "CORS_ALLOWED_ORIGINS es obligatorio en producción "
+            "para evitar consumo de API no autorizado."
+        )
+    if not env("DJANGO_COOKIE_SECURE"):
+        raise ValueError("DJANGO_COOKIE_SECURE debe ser True en producción.")
+
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-REFRESH_TOKEN_COOKIE_NAME = 'sgp_refresh_token'
-REFRESH_TOKEN_COOKIE_SECURE = env('DJANGO_COOKIE_SECURE')
-REFRESH_TOKEN_COOKIE_HTTPONLY = True # <-- Agregar esta línea para prevenir ataques XSS
-REFRESH_TOKEN_COOKIE_PATH = '/api/v1/auth/'
-MAX_FAILED_LOGIN_ATTEMPTS = env.int('MAX_FAILED_LOGIN_ATTEMPTS', default=3)
-LOGIN_LOCKOUT_MINUTES = env.int('LOGIN_LOCKOUT_MINUTES', default=5)
+REFRESH_TOKEN_COOKIE_NAME = "sgp_refresh_token"
+REFRESH_TOKEN_COOKIE_SECURE = env("DJANGO_COOKIE_SECURE")
+REFRESH_TOKEN_COOKIE_HTTPONLY = True  # <-- Agregar esta línea para prevenir ataques XSS
+REFRESH_TOKEN_COOKIE_PATH = "/api/v1/auth/"
+MAX_FAILED_LOGIN_ATTEMPTS = env.int("MAX_FAILED_LOGIN_ATTEMPTS", default=3)
+LOGIN_LOCKOUT_MINUTES = env.int("LOGIN_LOCKOUT_MINUTES", default=5)

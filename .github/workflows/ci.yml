@@ -20,7 +20,7 @@ jobs:
       - name: Instalar pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 9
 
       - name: Configurar Node.js 20
         uses: actions/setup-node@v4
@@ -61,6 +61,11 @@ jobs:
       - name: Levantar contenedores Docker
         # Levanta solo la BD y el Backend usando tu propio docker-compose
         run: docker compose up --build -d db backend
+
+      - name: Ejecutar Linter y Formato Backend (Flake8 & Black)
+        run: |
+          docker compose exec -T backend flake8 .
+          docker compose exec -T backend black --check .
 
       - name: Ejecutar Pruebas Automatizadas (Pytest)
         # El flag -T es necesario en GitHub Actions para que no pida terminal interactiva

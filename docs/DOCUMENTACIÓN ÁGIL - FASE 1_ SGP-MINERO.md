@@ -1,20 +1,24 @@
+# **DOCUMENTACIÓN ÁGIL — SGP-MINERO (LÍNEA BASE OFICIAL FASE 1 + ACTUALIZACIONES VIGENTES)**
 
+> **Naturaleza de este documento:** Representación fiel en Markdown del entregable oficial aprobado en **Fase 1** (`Fase 1/Evidencias Grupales/DOCUMENTACIÓN ÁGIL - FASE 1_ SGP-MINERO.docx`, Duoc UC — Sede Plaza Vespucio), enriquecida con el **registro trazable de todas las actualizaciones metodológicas, arquitectónicas, de seguridad y de alcance** adoptadas por el Squad durante la ejecución de los **Sprints 0, 1, 2 y 3** (actualizado al **`2026-11-06`**). La carpeta `Fase 1/` conserva intacta la evidencia histórica original entregada.
 
-**DOCUMENTACIÓN ÁGIL \- FASE 1: SGP-MINERO**
+**Institución y Asignatura:** Duoc UC — Escuela de Informática y Telecomunicaciones (Sede Plaza Vespucio) · Proyecto Capstone (`46104` / `APT122`)
 
-**Integrantes:**
+**Integrantes del Squad:**
 
-Ángel Frei  
-Andrés Salcedo  
-Bernardo Diaz
+* **Bernardo Erich Burisch Díaz** *(Scrum Master & Developer — Backend, BD & DevOps)*  
+* **Ángel Nicolás Frei Cepeda** *(Product Owner & Developer — Frontend UI/UX & Mapper)*  
+* **Andrés Sebastián Salcedo Morales** *(QA, Security Lead & Developer — BD Híbrida, Criptografía & CI/CD)*
 
-**Profesor:** 
+**Profesor Guía:** 
 
-Diego Alberto Garces Miranda
+Diego Alberto Garcés Miranda
 
 ## **Índice** {#índice}
 
-[Índice	2](#índice)
+[Índice](#índice)
+
+[**0\. Control de Versiones y Decisiones Vigentes de Ejecución (Sprints 0 al 3)**](#0.-control-de-versiones-y-decisiones-vigentes-de-ejecución)
 
 [**1\. Análisis del Caso: Contexto, Problemática e Impacto	3**](#1.-análisis-del-caso:-contexto,-problemática-e-impacto)
 
@@ -104,46 +108,23 @@ Diego Alberto Garces Miranda
 
 [12.2 Conclusiones	41](#12.2-conclusiones)
 
-## **Convenciones y decisiones de alcance vigentes**
+---
 
-Las siguientes decisiones actualizan y precisan la especificación funcional
-del MVP. Complementan las secciones posteriores sin modificar los objetivos
-originales del proyecto:
+## **0\. Control de Versiones y Decisiones Vigentes de Ejecución** {#0.-control-de-versiones-y-decisiones-vigentes-de-ejecución}
 
-* **Cifrado de datos PII:** El backend utiliza la librería `cryptography` y su
-  esquema Fernet. Fernet proporciona cifrado autenticado basado en AES-128-CBC
-  junto con HMAC-SHA256. Por lo tanto, en este documento se utilizará
-  "Fernet" para referirse a la implementación concreta y "AES" únicamente
-  para describir el algoritmo simétrico subyacente. La llave se obtiene desde
-  `AES_SECRET_KEY` y nunca se codifica en el repositorio.
-* **Navegación frontend:** El frontend se implementa como una SPA con React y
-  Vite. En la versión actual no se utiliza React Router ni se crean URLs
-  independientes para cada módulo; la navegación se controla dentro de la
-  vista principal según el rol autenticado. La protección efectiva de los
-  recursos se mantiene en el backend mediante JWT y permisos RBAC.
-* **Faena:** `faena` es una dimensión operacional obligatoria de
-  `Maestro_Personas` y representa la operación minera a la que pertenece la
-  persona. Los campos obligatorios del maestro son `rut`, `nombre_completo`,
-  `faena` y `centro_costo`; el valor se propaga al registro de viaje para
-  permitir filtros consistentes.
-* **Fechas:** `fecha_procesamiento` corresponde al momento en que el sistema
-  procesa la carga. `fecha_vuelo` corresponde a la fecha del viaje informada
-  por la planilla, cuando dicha columna forma parte del formato procesado.
-  No son conceptos intercambiables. Los filtros y las columnas disponibles
-  deben indicar explícitamente cuál de las dos fechas utilizan.
-* **Exportación CSV:** Durante el MVP, la exportación del Dashboard genera
-  un CSV con los registros actualmente renderizados en la página y con los
-  filtros aplicados. No representa todavía una exportación masiva de todos
-  los resultados almacenados en la base de datos.
-* **Gestión de usuarios y auditoría:** Ambas capacidades forman parte del
-  alcance del MVP. Gestión de Usuarios permitirá administrar cuentas, roles y
-  estado de habilitación desde una superficie protegida para el
-  Administrador. Auditoría permitirá consultar los eventos operativos
-  registrados, respetando los permisos y sin exponer PII innecesaria.
-* **Fuera del MVP:** El centro de emisión, la agencia, el canal de compra y
-  el sitio operacional quedan explícitamente fuera del alcance del MVP. No se
-  incorporarán como campos, filtros o catálogos hasta contar con una
-  definición empresarial y un catálogo oficial.
+Con el propósito de mantener total transparencia metodológica y trazabilidad de ingeniería entre la **planificación inicial aprobada en Fase 1** (`2026-09-14`) y la **construcción en curso del MVP en Fase 2** (`Sprints 0 al 3`), esta sección consolida las decisiones técnicas y de gestión formalmente adoptadas por el equipo y vigentes al **`2026-11-06`** (para el detalle a nivel de código fuente y estimación de pendientes por Sprint, véase [`INFORME_REVISION_Y_AVANCE_SGP_MINERO.md`](INFORME_REVISION_Y_AVANCE_SGP_MINERO.md)):
+
+| Ámbito | Definición Original en Fase 1 | Decisión Vigente Adoptada en Ejecución | Justificación Técnica / Operativa |
+| :--- | :--- | :--- | :--- |
+| **1. Herramienta de Gestión Ágil (Scrum)** | Seguimiento operativo diario y ceremonias dentro de **Jira Software** (`SGP-1` a `SGP-27`). | **Migración de herramienta manteniendo la estructura Jira:** Registro formal de Ceremonias Scrum (*Planning, Review, Retrospective*) en **documento Word** y registro diario de **Daily Scrum** en [`docs/Daily Scrum.xlsx`](Daily%20Scrum.xlsx). Se mantienen intactos los códigos base **`SGP-1` a `SGP-27`** (`91 SP`), sumando las ampliaciones trazables **`SGP-28`, `SGP-29` y `SGP-30`** (`+18 SP`, total `109 SP`) y los *Smart Commits* en GitHub. | Inconvenientes operativos con la plataforma Jira llevaron al equipo a migrar el soporte documental sin alterar el marco Scrum ni perder trazabilidad código-ticket en Git. |
+| **2. Enrutamiento Frontend y Conmutación Dev/Prod** | SPA en React con `React Router` y rutas protegidas por rol. *(En una iteración intermedia del 12-10-2026 se probó cambio de vistas solo por estado local).* | **SPA con `react-router-dom` v7 (`<BrowserRouter>` + `<ProtectedRoute>`) activa tanto en desarrollo como en producción** (`/`, `/carga`, `/historial`, `/dashboard`, más `/usuarios` y `/auditoria` planificadas en cierre de Sprint 3). La conmutación Desarrollo vs. Producción ocurre mediante variables de entorno (`VITE_API_URL` / proxy Vite), *entrypoints* Docker separados (`entrypoint.sh` con `runserver`+`seed` vs. `production_entrypoint.sh` con `gunicorn`) y `DJANGO_DEBUG` / `DATABASE_URL` en `settings.py`. | Unifica el comportamiento de rutas protegidas RBAC (`SGP-14`) en todos los entornos y aísla de forma segura la configuración productiva Cloud frente al entorno local Docker. |
+| **3. Infraestructura, Runtime, Flujo Git y CI/CD (`Sprint 0`)** | Frontend `node:18-alpine` con `ESLint`/`Prettier`; Backend `python:3.10-slim`; *Ruleset* de aprobación síncrona obligatoria en PRs hacia `main`. | Frontend sobre **`node:20-alpine`** (Vite 8 + React 19) con linter ultrarrápido **`oxlint`** y **`pnpm` v9**; Backend sobre **`python:3.11-slim`** con **`Flake8` y `Black`** contenerizados; reemplazo del bloqueo manual de PRs por **Integración Basada en Tronco (*Trunk-Based Development*)** validada automáticamente en **GitHub Actions** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml): `oxlint`, `vite build`, `flake8`, `black --check` y `pytest` sobre PostgreSQL 15 en Docker). | Node 18 alcanzó EOL y Vite 8 requiere Node 20+. En un Squad de 3 integrantes, la espera de aprobación manual en cada PR generaba cuellos de botella operativos; delegar el control de calidad al pipeline CI automatizado en Docker garantiza cero regresiones sin frenar la velocidad de entrega. |
+| **4. Autenticación, Hashing y Cookies (`Sprint 1`)** | Hash `Argon2/PBKDF2`, JWT con cookie `HttpOnly, Secure, SameSite=Strict` y bloqueo tras 3 intentos fallidos. | **`Argon2PasswordHasher` (`argon2-cffi`)** como hasher primario (incorporado en commit `8f69987`); login normalizado por **RUT** (`12.345.678-5`, `12345678-5` o `123456785`) o **correo corporativo**; bloqueo automático por **`5` minutos** tras **`3` fallos consecutivos** (`select_for_update()`); `Access Token` solo en memoria RAM (`api.js`) y `Refresh Token` en cookie `HttpOnly` `sgp_refresh_token` parametrizable (`SameSite=Strict` en local; `SameSite=None; Secure=True` para dominios cruzados Vercel/Render). | Cumple con seguridad defensiva contra XSS y fuerza bruta, habilitando compatibilidad real con despliegues Cloud desacoplados (*cross-origin*). |
+| **5. Criptografía PII (`Sprint 2`)** | Menciones combinadas a `AES-128` (`cryptography.fernet`) y `AES-256`. | Estandarización oficial en **`cryptography.fernet.Fernet`**, que implementa cifrado autenticado **`AES-128-CBC` + firma de integridad `HMAC-SHA256`** con llave maestra `AES_SECRET_KEY` (32 bytes aleatorios en Base64 URL-safe desde `.env`). Las columnas originales de RUT y Nombre se eliminan del diccionario antes de insertar en `JSONB`, y jamás se registran PII en `detalle_errores` ni logs. | `Fernet` es la receta criptográfica auditada de `pyca/cryptography` que previene ataques de manipulación de texto cifrado (*padding oracle*) y cumple íntegramente la Ley N° 19.628. |
+| **6. Modelo Híbrido Ampliado y Dimensión `faena` (`Sprints 2 y 3`)** | 4 tablas iniciales (`Rol`, `Usuario`, `Maestro_Personas` con 3 campos de negocio, `Registro_Viaje`). | Evolución a **6 entidades versionadas por migraciones Django (`0001` a `0005`)**: `Rol`, `Usuario`, `Maestro_Personas`, **`LoteCarga`** (`lote_carga`), `RegistroViaje` (`registro_viaje`) y **`RegistroAuditoria`** (`registro_auditoria`). Se incorpora **`faena`** como dimensión operacional obligatoria en `Maestro_Personas` (separada contablemente de `centro_costo`) y se propaga automáticamente a `RegistroViaje.payload_datos`. | Garantiza trazabilidad por lote completo, bitácora inmutable de acciones críticas, integridad referencial `PROTECT` y segmentación operativa real por faena minera (`Faena Cordillera`, `Faena Norte`, `Faena Central`). |
+| **7. Evolución del Alcance Funcional en Sprint 3 (`SGP-28`, `SGP-29` y `SGP-30`)** | `Won't Have` inicial en Fase 1 para CRUD de usuarios en React (delegado a `/admin/`), pero considerado en el Mockup de Vista 2 (*"Gestión de Usuarios"*). | **Se mantienen como alcance activo en desarrollo para Sprint 3:** (a) **`US-16 / SGP-28` Gestión de Usuarios y Roles** y **`US-17 / SGP-29` Auditoría Operativa** (con modelos BD y vistas base `UsersView.jsx` / `AuditView.jsx` ya adelantadas, pendientes de conectar mediante endpoints DRF y rutas RBAC, operando en paralelo con Django Admin `/admin/`); y (b) **`US-EXTRA-01 / SGP-30` Flujo Visual Paso a Paso del Cargador** solicitado por el Profesor Guía (comparación visual de encabezados, vista previa de la tabla estandarizada a subir y trazabilidad visual de lo que ejecuta el motor backend). Adicionalmente ya están operativos **`Mis Cargas` (`/historial`)** y el **Directorio Maestro paginado**. | Preserva la trazabilidad real de todo lo planificado que aún resta por cerrar antes del fin del proyecto e incorpora la retroalimentación pedagógica directa del docente sobre la experiencia visual del Cargador. |
+
+---
 
 ## **1\. Análisis del Caso: Contexto, Problemática e Impacto** {#1.-análisis-del-caso:-contexto,-problemática-e-impacto}
 
@@ -191,7 +172,7 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 
   **Pilar 1: Privacidad y Seguridad por Diseño (Privacy by Design)** 
 
-  La seguridad no es un módulo adicional, sino el núcleo del sistema. En estricto cumplimiento con la Ley N° 19.628 sobre Protección de la Vida Privada, toda Información de Identificación Personal (PII), como el RUT y el Nombre Completo, es sometida a un proceso de cifrado simétrico mediante Fernet, basado en AES-128-CBC y HMAC-SHA256, antes de ser persistida en la base de datos. Además, para evitar fugas de información, la validación de identidad se realiza de forma 100% interna contra una tabla maestra aislada, prohibiendo categóricamente la integración con APIs gubernamentales o servicios de terceros.
+  La seguridad no es un módulo adicional, sino el núcleo del sistema. En estricto cumplimiento con la Ley N° 19.628 sobre Protección de la Vida Privada, toda Información de Identificación Personal (PII), como el RUT y el Nombre Completo, es sometida a un proceso de cifrado simétrico (estándar AES) antes de ser persistida en la base de datos. Además, para evitar fugas de información, la validación de identidad se realiza de forma 100% interna contra una tabla maestra aislada, prohibiendo categóricamente la integración con APIs gubernamentales o servicios de terceros.
 
   **Pilar 2: Flexibilidad Estructural Híbrida** 
 
@@ -220,14 +201,14 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 * **Beneficio Esperado (Solución):** Se le provee una interfaz de usuario asistida (Mapper UI) que le permite subir el archivo en su formato original y emparejar visualmente las columnas. El sistema le devuelve un reporte detallado (fila por fila) con los motivos exactos de rechazo, eliminando la necesidad de buscar errores "a mano".  
   **2\. Administrador (Soporte TI / Gerencia de Operaciones)**  
 * **Nivel de Acceso:** Acceso total (Full Access).  
-* **Responsabilidad:** Mantener la operatividad paramétrica del sistema, asegurar que la base de datos maestra esté actualizada y gestionar las cuentas de los operadores mediante la funcionalidad protegida de Gestión de Usuarios incluida en el MVP. El panel Django Admin se conserva como herramienta administrativa técnica, pero no reemplaza la superficie funcional destinada al Administrador.
+* **Responsabilidad:** Mantener la operatividad paramétrica del sistema, asegurar que la base de datos maestra esté actualizada y gestionar las cuentas de los operadores (creación de usuarios y asignación de roles), acción que se realizará de forma segura y directa a través del panel de administración nativo del servidor (Django Admin) para optimizar el alcance del MVP.   
 * **Dolor Principal (Pain Point):** La desactualización de la base de trabajadores autorizados para viajar, la cual, al no contar con una integración directa a un sistema ERP (como SAP o Buk), requeriría un ingreso manual, lento y propenso a errores registro por registro.  
-* **Beneficio Esperado (Solución):** Se le entrega un "Mantenedor Ágil", un módulo exclusivo de carga masiva que le permite subir archivos estandarizados (CSV o Excel) para actualizar o registrar cientos de trabajadores en la tabla Maestro\_Personas en cuestión de segundos, además de una Gestión de Usuarios protegida para administrar cuentas, roles y estados de habilitación, asegurando la fiabilidad del motor de validación y del control de acceso.
+* **Beneficio Esperado (Solución):** Se le entrega un "Mantenedor Ágil", un módulo exclusivo de carga masiva que le permite subir archivos estandarizados (CSV o Excel) para actualizar o registrar cientos de trabajadores en la tabla Maestro\_Personas en cuestión de segundos, asegurando la fiabilidad del motor de validación.  
   **3\. Consultor (Auditor / Jefatura / Cliente Interno)**  
 * **Nivel de Acceso:** Perfil estrictamente de solo lectura (Read-Only). No tiene permisos para cargar archivos, modificar usuarios ni alterar configuraciones.  
 * **Responsabilidad:** Supervisar la correcta ejecución de los presupuestos, auditar los pasajes validados y extraer métricas para la toma de decisiones gerenciales.  
 * **Dolor Principal (Pain Point):** Falta de visibilidad consolidada y en tiempo real sobre los datos logísticos validados, lo que dificulta la generación de reportes y la trazabilidad de la información.  
-* **Beneficio Esperado (Solución):** Acceso a un panel de control corporativo (Dashboard) con tablas de datos estructuradas e inalterables, provistas de filtros dinámicos (por fecha de procesamiento, fecha de vuelo cuando esté disponible, faena, centro de costo y estado) que permiten inspeccionar y exportar la información procesada de manera transparente y segura. La Auditoría complementa este flujo mediante la consulta de eventos operativos autorizados.
+* **Beneficio Esperado (Solución):** Acceso a un panel de control corporativo (Dashboard) con tablas de datos estructuradas e inalterables, provistas de filtros dinámicos (por fecha, centro de costo, etc.) que permiten inspeccionar y exportar la información procesada de manera transparente y segura.
 
 
   ## **4\. Metodología de Trabajo y Estructura del Equipo**  {#4.-metodología-de-trabajo-y-estructura-del-equipo}
@@ -243,7 +224,12 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 | **Andrés Sebastián Salcedo Morales** | **QA,  Security Lead & developer** | Base de Datos, Criptografía y Calidad | **Gestión:** Asegurar que los entregables cumplan con la *Definition of Done* (DoD), liderar las métricas de calidad (ISO 25010\) y auditar el cumplimiento de la Ley 19.628 sobre protección de datos PII.**Técnico:** Modelado de la base de datos híbrida en PostgreSQL (tablas relacionales y columnas JSONB), implementación del cifrado criptográfico simétrico (AES) y desarrollo de las pruebas automatizadas (unitarias, integración y seguridad). |
 
 
-  **Dinámica de Trabajo y Herramientas** Para sostener esta distribución de roles, el equipo utilizará **Jira Software** como la herramienta central para la planificación de Sprints y la documentación de historias de usuario. A su vez, la trazabilidad del código se auditará mediante **GitHub**, donde será obligatorio el uso de *Smart Commits* (ej. SGP-15: \[mensaje\]) para vincular el trabajo técnico de Bernardo, Ángel y Andrés directamente con las tareas de gestión documentadas en Jira.
+  **Dinámica de Trabajo y Herramientas** Para sostener esta distribución de roles, el equipo definió originalmente **Jira Software** como la herramienta central para la planificación de Sprints y la documentación de historias de usuario. A su vez, la trazabilidad del código se auditará mediante **GitHub**, donde será obligatorio el uso de *Smart Commits* (ej. SGP-15: \[mensaje\]) para vincular el trabajo técnico de Bernardo, Ángel y Andrés directamente con las tareas de gestión documentadas en Jira.
+
+  > **[Actualización Metodológica Vigente — Sprints 1 a 4]:** Debido a inconvenientes operativos presentados en el uso de Jira Software, el equipo migró la gestión documental de Scrum a herramientas ofimáticas estructuradas **manteniendo intacta toda la taxonomía definida originalmente para Jira** (`SGP-1` a `SGP-7` para Épicas, `SGP-8` a `SGP-12` para Tareas Técnicas de Infraestructura y `SGP-13` a `SGP-27` para Historias de Usuario, junto con sus estimaciones Fibonacci de **91 Story Points**):
+  > * **Ceremonias Scrum (*Sprint Planning, Sprint Review y Sprint Retrospective*):** Se registran formalmente en un **documento maestro en Word** administrado por el Scrum Master.
+  > * **Daily Scrum (Sincronización diaria por Sprint):** Se gestiona en la planilla versionada [`docs/Daily Scrum.xlsx`](Daily%20Scrum.xlsx), estructurada en 4 hojas (`Sprint 1`, `Sprint 2`, `Sprint 3` y `Sprint 4`, cubriendo las Semanas 5 a 18) bajo el formato estándar *`[ID-SGP]: Ayer / Hoy / Impedimentos`*. Tras la retrospectiva de Sprint 2, el equipo acordó además ajustar la cadencia de registro diario para priorizar bloques continuos de codificación efectiva sin sacrificar trazabilidad de impedimentos.
+  > * **Integración Continua y *Smart Commits*:** GitHub conserva la vinculación directa mediante identificadores `SGP-*` en commits y Pull Requests, complementada ahora por el pipeline automatizado de validación en GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
 
 
   ## **5\. Mapa Mental (Estructura de la Solución)** {#5.-mapa-mental-(estructura-de-la-solución)}
@@ -273,9 +259,9 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
     * **Esquema Híbrido (Documental):** Tabla Registro\_Viaje utilizando la columna nativa JSONB para almacenar el contenido variable de los Excel procesados y cifrados.
 
   * **5\. DevSecOps e Infraestructura (Entorno de Trabajo)**  
-    * **Contenedores:** Archivos Dockerfile separados y orquestación local con docker-compose.yml.  
+    * **Contenedores:** Archivos Dockerfile separados y orquestación local con docker-compose.yml (`node:20-alpine`, `python:3.11-slim`, `postgres:15-alpine`).  
     * **Gestión de Secretos:** Aislamiento de llaves de cifrado y credenciales mediante archivos .env ignorados en el repositorio.  
-    * **Control de Versiones:** Repositorio en GitHub con README.md estructurado y uso de *Smart Commits* integrados a Jira.
+    * **Control de Versiones y CI:** Repositorio en GitHub con README.md estructurado, validación automatizada en GitHub Actions (`ci.yml`) y uso de *Smart Commits* (`SGP-*`) trazados contra el registro Scrum en Word y [`docs/Daily Scrum.xlsx`](Daily%20Scrum.xlsx).
 
 
   ## **6\. Impact Mapping (Alineación Estratégica)** {#6.-impact-mapping-(alineación-estratégica)}
@@ -302,7 +288,7 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 
 * **Interacción del Usuario:** El Cargador ingresa sus credenciales corporativas en la interfaz de Login inicial.  
 * **Respuesta del Frontend (React):** Envía la petición a la API. Al recibir una respuesta exitosa, almacena el *Access Token* de corta duración exclusivamente en la memoria temporal del cliente (ej. Zustand o Context API), mitigando riesgos de ataques XSS (prohibición de uso de localStorage).  
-* **Lógica de Enrutamiento (RBAC):** El frontend interpreta el rol ("Cargador") incluido en la sesión y muestra dentro de la SPA la vista de "Zona de Carga", bloqueando cualquier intento de navegación hacia paneles administrativos o dashboards gerenciales. La autorización definitiva se ejecuta en el backend mediante JWT y permisos RBAC; la SPA no utiliza React Router en esta versión.
+* **Lógica de Enrutamiento (RBAC):** El frontend decodifica el *payload* del JWT para identificar el rol ("Cargador"). Automáticamente, el enrutador (React Router) redirige al usuario a la vista de "Zona de Carga", bloqueando algorítmicamente cualquier intento de navegación hacia paneles administrativos o dashboards gerenciales.  
   **Fase 2: Pre-análisis y Subida del Archivo (Upload & Parsing)**  
 * **Interacción del Usuario:** El Cargador navega a la zona de *Drag & Drop* y arrastra un archivo que contiene las solicitudes de pasajes.  
 * **Respuesta del Frontend (React):** Ejecuta una validación primaria en el navegador, aceptando estricta y únicamente archivos con la extensión .xlsx. Muestra un indicador de carga (spinner) mientras se comunica con el servidor.  
@@ -325,12 +311,18 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   * Detalle exacto de los rechazos (Ej: Fila 45 | Motivo: El RUT ingresado es inválido matemáticamente).  
 * Esta retroalimentación le permite al Cargador abrir su Excel original, corregir los datos puntuales señalados por el sistema y volver a procesar, eliminando las horas de revisión manual a ciegas.
 
+  > **[Actualización de Implementación Vigente — Rol Cargador]:**
+  > * **Autenticación y Sesión:** El login (`POST /api/v1/auth/login/`) acepta indistintamente correo corporativo o RUT en cualquier formato (`12.345.678-5`, `12345678-5`, `123456785`). El perfil y rol (`Cargador`) se obtienen de la respuesta JSON del login y de `GET /api/v1/auth/me/` (sin exponer datos sensibles ni requerir decodificación manual del JWT en el cliente), conservando el `Access Token` únicamente en memoria RAM (`api.js`) y el `Refresh Token` en la cookie `HttpOnly` `sgp_refresh_token`.
+  > * **Rutas SPA y Extensión `Mis Cargas` (`/historial`):** La navegación opera sobre `react-router-dom` v7 (`<BrowserRouter>` + `<ProtectedRoute>`). Además de la vista de ingesta en `/carga` (`POST /api/v1/uploads/headers/` con `nrows=0` y `POST /api/v1/uploads/process/` con respuesta `200 OK` o `207 Multi-Status`), se incorporó como mejora operativa el módulo **Mis Cargas (`/historial`)** (`GET /api/v1/uploads/history/` y `/<lote_id>/`), que permite a cada Cargador auditar exclusivamente el historial de sus propios lotes procesados y sus motivos de rechazo sin exposición de PII.
+  > * **Propagación de `faena`:** Al validar exitosamente una fila contra `Maestro_Personas`, el backend inyecta automáticamente la `faena` oficial del trabajador dentro de `RegistroViaje.payload_datos` (`JSONB`) junto con los tokens `Fernet` (`AES-128-CBC + HMAC-SHA256`) y elimina las columnas originales de RUT y Nombre en texto plano antes del `INSERT`.
+  > * **Mejora Visual Planificada por Solicitud del Profesor Guía (`US-EXTRA-01 / SGP-30`):** Manteniendo intacto el reporte final estructurado de aprobados, rechazados y causas por fila (`SGP-22`), se planificó enriquecer visualmente el asistente en `/carga` mediante un flujo guiado en **4 pasos** (*1. Subida e inspección del `.xlsx` -> 2. Comparador visual de encabezados con valores reales de muestra -> 3. Previsualización de la tabla final estandarizada a subir -> 4. Visualización paso a paso de lo que ejecuta internamente el motor de validación, cruce maestro y cifrado `Fernet`*), haciendo transparente al usuario toda la lógica que ocurre por detrás.
+
   ### **B. Viaje del Usuario: Rol Administrador (Flujo de Mantenimiento B2B)** {#b.-viaje-del-usuario:-rol-administrador-(flujo-de-mantenimiento-b2b)}
 
   El "Administrador" es un perfil gerencial o de Soporte TI. Su viaje de usuario está diseñado para resolver la necesidad crítica de mantener la base de datos de trabajadores actualizada de forma masiva, rápida y autónoma, mitigando la restricción técnica de no contar con integraciones automatizadas hacia sistemas ERP externos (como SAP o Buk).  
   **Fase 1: Autenticación Privilegiada y Enrutamiento (RBAC)**  
 * **Interacción del Usuario:** El Administrador ingresa sus credenciales en el portal de inicio de sesión.  
-* **Lógica de Navegación (React):** El sistema procesa la autenticación y almacena el JWT en memoria. Al interpretar el rol privilegiado de "Administrador", la SPA muestra el Mantenedor de Personas y la Gestión de Usuarios habilitados para ese perfil.
+* **Lógica de Enrutamiento (React):** El sistema procesa la autenticación y almacena el JWT en memoria. Al decodificar el *payload*, el frontend identifica el rol privilegiado de "Administrador".  
 * **Renderizado Condicional:** Gracias a este rol, React renderiza dinámicamente elementos ocultos en el menú de navegación (Sidebar), habilitando el acceso a la vista exclusiva denominada "Mantenedor Ágil del Maestro".  
   **Fase 2: Preparación y Carga Masiva (Data Ingestion)**  
 * **Interacción del Usuario:** El Administrador recibe desde el departamento de Recursos Humanos una nómina actualizada de trabajadores autorizados (propios o subcontratistas) y la arrastra hacia la zona de carga del Mantenedor.  
@@ -351,22 +343,31 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   * Errores de formato encontrados en la plantilla (si los hubiese).  
 * **Impacto Operativo:** A partir de este instante, cualquier nueva carga realizada por el rol "Cargador" será validada algorítmicamente contra este maestro recién actualizado, garantizando que el motor de ingesta opere con la "fuente de verdad" más reciente de la minera.
 
+  > **[Actualización de Implementación Vigente — Rol Administrador]:**
+  > * **Dimensión Operacional `faena`:** En la implementación real (`POST /api/v1/master-persons/import/`), la nómina CSV o XLSX exige 4 columnas obligatorias: `rut`, `nombre_completo`, **`faena`** y `centro_costo` (siendo `estado_habilitacion` opcional y activa por defecto). `faena` identifica la operación minera (ej. `Faena Cordillera`, `Faena Norte`, `Faena Central`) y se mantiene separada de `centro_costo` (imputación contable).
+  > * **Sincronización y Auditoría:** El *UPSERT* se ejecuta de forma segura mediante `Maestro_Personas.objects.update_or_create()` dentro de bloques atómicos (`transaction.atomic()`), retornando `200` (éxito total) o `207` (éxito parcial con detalle de rechazos) y registrando el evento inmutable `IMPORTAR_MAESTRO_PERSONAS` en `RegistroAuditoria`.
+  > * **Directorio Maestro Integrado, Gestión de Usuarios (`SGP-28`) y Auditoría Operativa (`SGP-29`):** Debajo del importador en `/carga`, se añadió una tabla paginada y filtrable por `faena`, estado y búsqueda (`GET /api/v1/master-persons/`). Adicionalmente, dentro del alcance activo en desarrollo del Sprint 3 se contempla completar la integración REST y de rutas RBAC (`/usuarios` y `/auditoria`) para las vistas administrativas ya adelantadas en `UsersView.jsx` (`US-16 / SGP-28`) y `AuditView.jsx` (`US-17 / SGP-29`), manteniendo **Django Admin (`/admin/`)** como respaldo administrativo nativo complementario.
+
   ### **C. Viaje del Usuario: Rol Consultor (Flujo de Auditoría y Control)** {#c.-viaje-del-usuario:-rol-consultor-(flujo-de-auditoría-y-control)}
 
   El "Consultor" representa a las jefaturas, gerencia de operaciones, o auditores internos. Su viaje de usuario está diseñado para proveer visibilidad total y en tiempo real sobre los datos logísticos procesados, garantizando la trazabilidad corporativa sin comprometer la integridad de la información, operando bajo un esquema estricto de "Solo Lectura" (Read-Only).  
   **Fase 1: Autenticación y Cierre Perimetral (RBAC Estricto)**  
 * **Interacción del Usuario:** El Consultor inicia sesión en la plataforma con sus credenciales institucionales.  
-* **Lógica de Navegación (React):** Al interpretar el perfil de auditoría del *Access Token* (JWT) almacenado en memoria, la SPA muestra inmediatamente la vista principal del Dashboard corporativo.
+* **Lógica de Enrutamiento (React):** Al decodificar el *Access Token* (JWT) almacenado en memoria, el frontend identifica el perfil de auditoría. El sistema lo redirige inmediatamente a la vista principal del Dashboard corporativo.  
 * **Protección de API y Vistas (Seguridad):** A nivel de interfaz, los botones de "Subir Archivo" o "Mantenedor" simplemente no se renderizan en el DOM. A nivel de servidor, los controladores de Django REST Framework (DRF) rechazarán automáticamente con un error HTTP 403 (Forbidden) cualquier intento del Consultor por forzar una petición POST/PUT/DELETE hacia los endpoints transaccionales, blindando el sistema.  
   **Fase 2: Exploración de Datos y Filtrado Dinámico (Data Visualization)**  
 * **Interacción del Usuario:** El Consultor interactúa con un panel de control (Dashboard) limpio y estructurado, equipado con herramientas de búsqueda y menús desplegables de filtrado.  
-* **Lógica de Consulta (Backend/PostgreSQL):** El usuario aplica filtros específicos, diferenciando la fecha de procesamiento de la fecha de vuelo cuando esta última está disponible en la planilla, además de faena, centro de costo y estado. El backend procesa esta solicitud sobre la base de datos PostgreSQL y al extraer información desde la columna dinámica JSONB de la tabla Registro\_Viaje, el servidor desempaqueta los datos pertinentes y los envía al frontend de forma segura y estructurada.
+* **Lógica de Consulta (Backend/PostgreSQL):** El usuario aplica filtros específicos (ej. "Búsqueda por rango de fechas de vuelo" o "Filtrar por Centro de Costo"). El backend procesa esta solicitud ejecutando consultas optimizadas sobre la base de datos PostgreSQL. Al extraer información desde la columna dinámica JSONB de la tabla Registro\_Viaje, el servidor desempaqueta los datos pertinentes y los envía al frontend de forma segura y estructurada.  
   **Fase 3: Auditoría y Trazabilidad (Accountability)**  
 * **Interacción del Usuario:** Visualiza el historial completo de solicitudes de pasajes validadas a través de una tabla interactiva.  
 * **Visualización de la Trazabilidad:** El sistema le permite auditar el ciclo de vida del dato. El Consultor puede visualizar inalterablemente qué usuario "Cargador" subió cada registro, a qué hora exacta se procesó y si fue cruzado exitosamente contra el maestro. Esto da cumplimiento directo a la métrica de *Accountability* exigida por la normativa de seguridad de la información (ISO 25010).  
   **Fase 4: Exportación Segura (Reporting)**  
 * **Interacción del Usuario:** El Consultor presiona el botón de exportación para llevarse los datos filtrados hacia su propio entorno de trabajo.  
-* **Respuesta del Sistema:** El frontend formatea la tabla visible y genera un archivo CSV de solo lectura con los registros actualmente renderizados y filtrados. El Consultor culmina su flujo obteniendo la inteligencia de negocios que necesitaba sin haber alterado un solo byte en la base de datos oficial, garantizando la seguridad en reposo de la plataforma.
+* **Respuesta del Sistema:** El frontend formatea la tabla visible y genera un archivo plano (CSV/Excel) de solo lectura con los registros auditados. El Consultor culmina su flujo obteniendo la inteligencia de negocios que necesitaba sin haber alterado un solo byte en la base de datos oficial, garantizando la seguridad en reposo de la plataforma.
+
+  > **[Actualización de Implementación Vigente — Rol Consultor]:**
+  > * **Endpoint Exclusivo y Descifrado en RAM:** El Dashboard (`/dashboard`) consume `GET /api/v1/dashboard/records/` (exclusivo para el rol `Consultor`; devuelve `403` a cualquier otro rol y `405` ante métodos distintos de `GET`). El descifrado de `rut_cifrado` y `nombre_cifrado` mediante `Fernet` ocurre estrictamente en memoria RAM al serializar cada página de respuesta, manteniendo los datos cifrados en reposo dentro de PostgreSQL.
+  > * **Semántica de Fechas y Alcance de Exportación CSV:** El filtro temporal actual del endpoint (`from` / `to`) filtra sobre `fecha_procesamiento` (instante exacto de ingesta del lote), mientras que la tabla también expone `fecha_vuelo` cuando el Excel de origen informa dicha columna dentro del `JSONB`. En el alcance vigente del MVP, el botón **Exportar CSV** genera en el navegador un archivo `.csv` con codificación UTF-8 BOM que contiene los registros filtrados actualmente renderizados en la página visible (hasta 50 filas por página), sin generar archivos temporales en el servidor.
 
   ## **8\. Épicas del Proyecto (Roadmap de Desarrollo)** {#8.-épicas-del-proyecto-(roadmap-de-desarrollo)}
 
@@ -374,7 +375,7 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   **Condiciones del Plan de Trabajo**  
 * **Duración y Recursos:** 18 semanas académicas utilizando repositorios en GitHub, tableros de Jira para la trazabilidad y herramientas Cloud-Native.  
 * **Facilitadores:** El conocimiento previo del equipo en lenguajes como Python y JavaScript, además de la familiaridad con la orquestación en Docker, lo que acelerará la fase inicial de infraestructura (Sprint 0).  
-* **Obstaculizadores y Mitigación:** La principal barrera técnica esperada es la implementación del cifrado autenticado mediante Fernet, basado en AES-128-CBC y HMAC-SHA256, sin afectar el rendimiento de la aplicación. Para mitigar esto, se asignó la responsabilidad exclusiva de este módulo al rol de *Security Lead*, junto con la ejecución de pruebas de carga tempranas (5.000 filas) en un entorno local antes de su paso a producción.
+* **Obstaculizadores y Mitigación:** La principal barrera técnica esperada es la implementación matemática del cifrado simétrico (AES) en la base de datos sin afectar el rendimiento de la aplicación. Para mitigar esto, se asignó la responsabilidad exclusiva de este módulo al rol de *Security Lead*, junto con la ejecución de pruebas de carga tempranas (5.000 filas) en un entorno local antes de su paso a producción.
 
 
   ### **EPIC 1: Infraestructura Base y Entorno DevSecOps** {#epic-1:-infraestructura-base-y-entorno-devsecops}
@@ -385,7 +386,7 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   ### **EPIC 2: Autenticación y Autorización (Control de Acceso RBAC)** {#epic-2:-autenticación-y-autorización-(control-de-acceso-rbac)}
 
 * **Objetivo:** Construir la barrera de seguridad perimetral de la plataforma.  
-* **Alcance:** Abarca el diseño y migración de las tablas relacionales de seguridad en PostgreSQL (Usuario, Rol), la generación de JSON Web Tokens (JWT) en el backend y la configuración de la navegación protegida de la SPA en React para restringir el acceso según los perfiles operativos de la minera (Administrador, Cargador, Consultor). La autorización efectiva se aplica siempre en el backend.
+* **Alcance:** Abarca el diseño y migración de las tablas relacionales de seguridad en PostgreSQL (Usuario, Rol), la generación de JSON Web Tokens (JWT) en el backend y la configuración de rutas privadas en React para restringir el acceso según los perfiles operativos de la minera (Administrador, Cargador, Consultor).
 
   ### **EPIC 3: Pre-procesamiento de Archivos y Mapper UI** {#epic-3:-pre-procesamiento-de-archivos-y-mapper-ui}
 
@@ -400,12 +401,12 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   ### **EPIC 5: Criptografía de Datos PII y Persistencia JSONB** {#epic-5:-criptografía-de-datos-pii-y-persistencia-jsonb}
 
 * **Objetivo:** Dar cumplimiento íntegro a la Ley N° 19.628 sobre Protección de la Vida Privada, resguardando la información sensible de los trabajadores.  
-* **Alcance:** Implementación de la librería `cryptography` mediante Fernet, cuyo cifrado autenticado se basa en AES-128-CBC y HMAC-SHA256, para proteger dinámicamente el RUT y Nombre de los registros validados, y su posterior persistencia segura dentro de la columna flexible JSONB de la tabla Registro\_Viaje en la base de datos.
+* **Alcance:** Implementación de la librería cryptography (módulo AES/Fernet) para cifrar dinámicamente el RUT y Nombre de los registros validados, y su posterior persistencia segura dentro de la columna flexible JSONB de la tabla Registro\_Viaje en la base de datos.
 
   ### **EPIC 6: Operatividad B2B (Mantenedor Ágil y Dashboards)** {#epic-6:-operatividad-b2b-(mantenedor-ágil-y-dashboards)}
 
 * **Objetivo:** Desarrollar las herramientas satélites necesarias para la gerencia y auditoría, mitigando la restricción de no contar con conexión a ERPs externos.  
-* **Alcance:** Construcción del endpoint de carga masiva (CSV/XLSX) para actualizar rápidamente la tabla relacional Maestro\_Personas, el desarrollo de Gestión de Usuarios para administrar cuentas, roles y estados de habilitación bajo el rol Administrador, la Auditoría de eventos operativos y el desarrollo de vistas analíticas de solo lectura con filtros dinámicos para el rol Consultor.
+* **Alcance:** Construcción del endpoint de carga masiva (CSV) para actualizar rápidamente la tabla relacional Maestro\_Personas (Rol Administrador), y el desarrollo de vistas analíticas de solo lectura con filtros dinámicos (Rol Consultor).
 
   ### **EPIC 7: QA, NFRs (Requisitos No Funcionales) y Despliegue en Producción** {#epic-7:-qa,-nfrs-(requisitos-no-funcionales)-y-despliegue-en-producción}
 
@@ -415,7 +416,7 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 
   ## **9\. Historias de Usuario (Product Backlog Inicial Completo)** {#9.-historias-de-usuario-(product-backlog-inicial-completo)}
 
-  **Propuesta de Evidencias:** Para dar cuenta del progreso y logro de las actividades del proyecto, se utilizarán los **Tickets finalizados en Jira** y los **Commits en GitHub** como evidencias principales. La justificación de esta elección radica en que cada Historia de Usuario cuenta con "Criterios de Aceptación" específicos y está sujeta a un *Definition of Done (DoD)* estricto. Al evidenciar que un ticket ha cumplido con estos criterios en la plataforma, se demuestra de forma tangible, auditable e inalterable que la funcionalidad fue desarrollada, probada y desplegada según los requerimientos del negocio y los estándares de calidad de la industria.  
+  **Propuesta de Evidencias:** Para dar cuenta del progreso y logro de las actividades del proyecto, se definieron originalmente los **Tickets finalizados en Jira** y los **Commits en GitHub** como evidencias principales *(en la ejecución real desde Sprint 1, el respaldo de tickets y ceremonias se consolida en el **Registro de Ceremonias Scrum en Word** y en [`docs/Daily Scrum.xlsx`](Daily%20Scrum.xlsx), conservando íntegramente los códigos `SGP-*` en los commits y Pull Requests de GitHub)*. La justificación de esta elección radica en que cada Historia de Usuario cuenta con "Criterios de Aceptación" específicos y está sujeta a un *Definition of Done (DoD)* estricto. Al evidenciar que un ticket ha cumplido con estos criterios, se demuestra de forma tangible, auditable e inalterable que la funcionalidad fue desarrollada, probada y desplegada según los requerimientos del negocio y los estándares de calidad de la industria.  
   Las Historias de Usuario de "SGP-Minero" conforman el Product Backlog inicial necesario para liberar el Producto Mínimo Viable (MVP) en las 18 semanas de desarrollo. Están redactadas siguiendo el estándar ágil y estimadas utilizando la secuencia de Fibonacci en Story Points (SP).  
   La numeración de los *tickets* en Jira (Código Jira) refleja la secuencia real del tablero:  
 * **SGP-1 al SGP-7:** Asignados a las 7 Épicas del proyecto.  
@@ -441,7 +442,11 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 | **TT-04** | **SGP-11** | EP 1: Infraestructura | Configurar docker-compose.yml para orquestar servicios. | **1\. Servicios:** Definir contenedores paralelos para frontend, backend y db (PostgreSQL 15).**2\. Persistencia:** Declarar un volumen local (postgres\_data) atado al contenedor de BD para que los datos no se pierdan al apagar Docker.**3\. Dependencias Lógicas:** El contenedor backend debe incluir una regla depends\_on apuntando a db.**4\. QA:** Al ejecutar docker-compose up \--build, todos los servicios deben emitir estado *Running* sin *CrashLoopBackOff*. | 5 |
 | **TT-05** | **SGP-12** | EP 1: Infraestructura | Configurar manejo de secretos .env (DevSecOps). | **1\. Plantilla:** Crear y subir al repositorio un archivo .env.example con las variables declaradas pero vacías (ej. DB\_PASSWORD=).**2\. Aislamiento:** Validar que .env esté declarado en el .gitignore.**3\. Inyección Backend:** Configurar settings.py de Django (mediante librería python-environ o os.environ) para consumir obligatoriamente variables como SECRET\_KEY y AES\_SECRET\_KEY desde el archivo local, arrojando excepción si no existen. | 2 |
 
-   
+   > **[Decisiones Aplicadas en Ejecución — Sprint 0 (`SGP-8` a `SGP-12`)]:**
+   > * **`TT-01 / SGP-8` *(100% Completado)*:** Se adoptó `oxlint` + `pnpm v9` en `frontend/` y se integraron **`flake8` (`>=7.1,<8`) y `black` (`>=24.8,<26`)** dentro del contenedor Docker de `backend/` ([`backend/.flake8`](../backend/.flake8) y [`backend/pyproject.toml`](../backend/pyproject.toml)). Asimismo, se descartó el bloqueo por aprobación manual en GitHub (*Branch Protection* síncrono) debido a que retrasaba el flujo de integración de un equipo de 3 desarrolladores, sustituyéndolo por **Trunk-Based Development con validación obligatoria automatizada en GitHub Actions CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)), que ejecuta `oxlint`, `vite build`, `flake8 .`, `black --check .` y `pytest` en contenedores Docker por cada subida a `main`.
+   > * **`TT-02 / SGP-9` *(100% Completado)*:** Se actualizó la imagen base del frontend a `node:20-alpine` (en lugar de `node:18-alpine`) para satisfacer los requerimientos de Vite 8 y React 19 y evitar utilizar una versión Node EOL, declarando explícitamente `server.host = '0.0.0.0'` y `port = 5173` en [`frontend/vite.config.js`](../frontend/vite.config.js) e idioma `lang="es"` con título corporativo en [`frontend/index.html`](../frontend/index.html).
+   > * **`TT-03 / SGP-10` y `TT-04 / SGP-11`:** El backend utiliza `python:3.11-slim` con doble punto de entrada: `entrypoint.sh` en desarrollo local (`migrate` + comando idempotente `seed_demo_data` + `runserver`) y `production_entrypoint.sh` en producción Cloud (`migrate` + `gunicorn`). En `docker-compose.yml`, el contenedor `db` (`postgres:15-alpine`) declara el volumen persistente `pgdata` y un `healthcheck` (`pg_isready`) con `condition: service_healthy`.
+   > * **`TT-05 / SGP-12`:** `.env.example` documenta placeholders locales seguros y `settings.py` valida obligatoriamente `DJANGO_SECRET_KEY`, `AES_SECRET_KEY` y las banderas de seguridad HTTPS/CORS cuando `DJANGO_DEBUG=False`.
 
    ### **9.2 Sprint 1: Core de Seguridad y Base de Datos (Semanas 5-8)** {#9.2-sprint-1:-core-de-seguridad-y-base-de-datos-(semanas-5-8)}
 
@@ -450,9 +455,11 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 | ID Lógico | Código Jira | Épica Asociada | Historia de Usuario | Criterios de Aceptación (Para Jira) | SP |
 | :---- | :---- | :---- | :---- | :---- | :---- |
 | **US-01** | **SGP-13** | EP 2: Autenticación | **Como** usuario, **quiero** iniciar sesión con mis credenciales, **para** acceder de forma segura. | **1\. (Given/When/Then):** Dado que un usuario ingresa credenciales válidas en el endpoint de autenticación, entonces el backend debe validar el *hash* (Argon2/PBKDF2) y generar una respuesta HTTP 200 con un Access Token en el cuerpo del JSON y un Refresh Token en una cookie configurada obligatoriamente con las banderas HttpOnly, Secure y SameSite=Strict. **2\. Seguridad:** Ante credenciales inválidas, el backend retorna exactamente un error HTTP 401\.**3\. Prevención de Fuerza Bruta:** El sistema debe bloquear la cuenta o suspender el endpoint tras 3 peticiones 401 consecutivas para el mismo usuario. | 5 |
-| **US-02** | **SGP-14** | EP 2: Autenticación | **Como** sistema frontend, **quiero** leer el rol del usuario, **para** restringir la navegación (RBAC). | **1\. Decodificación JWT:** React debe extraer el *payload* del token sin enviarlo nuevamente al servidor para determinar el rol activo (Administrador, Cargador, Consultor).**2\. Navegación Protegida:** La SPA debe envolver las vistas internas en una guardia de autorización equivalente a ProtectedRoute, aunque no utilice React Router ni URLs independientes en esta versión.**3\. (Given/When/Then):** Dado un usuario con rol "Cargador", cuando intenta seleccionar un módulo administrativo dentro de la SPA, entonces la navegación se bloquea y se muestra un mensaje de acceso denegado. El backend debe rechazar igualmente cualquier petición no autorizada con HTTP 403.**4\. UI Dinámica:** El menú lateral debe omitir renderizar los botones de módulos a los que el rol no tiene acceso. | 3 |
+| **US-02** | **SGP-14** | EP 2: Autenticación | **Como** sistema frontend, **quiero** leer el rol del usuario, **para** restringir la navegación (RBAC). | **1\. Decodificación JWT:** React debe extraer el *payload* del token sin enviarlo nuevamente al servidor para determinar el rol activo (Administrador, Cargador, Consultor).**2\. Enrutamiento Protegido:** Un componente ProtectedRoute debe envolver todas las vistas internas.**3\. (Given/When/Then):** Dado un usuario con rol "Cargador", cuando intenta acceder a la URL /admin-panel, entonces el router aborta la navegación y renderiza un componente de "Error 403: Acceso Denegado".**4\. UI Dinámica:** El menú lateral debe omitir renderizar los botones de módulos a los que el rol no tiene acceso. | 3 |
 
-   
+   > **[Decisiones Aplicadas en Ejecución — Sprint 1 (`SGP-13` y `SGP-14`)]:**
+   > * **`US-01 / SGP-13`:** Se configuró `Argon2PasswordHasher` (`argon2-cffi`) como algoritmo primario de contraseñas. El endpoint `/api/v1/auth/login/` normaliza RUTs con o sin separadores y bloquea la cuenta durante `5` minutos (`LOGIN_LOCKOUT_MINUTES=5`) tras `3` intentos inválidos consecutivos (`MAX_FAILED_LOGIN_ATTEMPTS=3`) usando `select_for_update()`. La cookie `HttpOnly` `sgp_refresh_token` utiliza `SameSite=Strict` en desarrollo local y admite `SameSite=None; Secure=True` mediante variables de entorno para despliegues Cloud cross-domain (Vercel + Render).
+   > * **`US-02 / SGP-14`:** Se consolidó `react-router-dom` v7 (`BrowserRouter` + `ProtectedRoute`) sobre las rutas reales `/`, `/carga`, `/historial` y `/dashboard`. La resolución del perfil y rol (`Administrador`, `Cargador`, `Consultor`) se obtiene de forma autenticada desde el payload de respuesta de `/api/v1/auth/login/` y `/api/v1/auth/me/` (renovando silenciosamente la sesión al recargar vía `/api/v1/auth/refresh/`), respaldada por permisos estrictos DRF en cada vista del servidor (`401` sin JWT, `403` rol no autorizado, `405` método no permitido).
 
    ### **9.3 Sprint 2: Motor de Ingesta, Mapper y Criptografía (Semanas 9-12)** {#9.3-sprint-2:-motor-de-ingesta,-mapper-y-criptografía-(semanas-9-12)}
 
@@ -465,11 +472,14 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 | **US-05** | **SGP-17** | EP 3: Mapper UI | **Como** Cargador, **quiero** emparejar columnas, **para** estandarizar datos. | **1\. Renderizado Dinámico:** Generar menús selectores (\<select\>) utilizando el array JSON del ticket anterior.**2\. Prevención de Errores (GIGO):** El botón "Procesar Archivo" se mantiene disabled estáticamente hasta que los *selects* correspondientes a "RUT" y "Nombre" tengan un valor asignado.**3\. Payload Final:** React empaqueta un objeto FormData que incluye el Excel original y el JSON { "map\_rut": "RUT\_TRAB", "map\_nombre": "NOMBRES\_COM" } hacia el endpoint de validación. | 5 |
 | **US-06** | **SGP-18** | EP 4: Validación | **Como** sistema de validación, **quiero** comprobar matemáticamente el RUT, **para** descartar fraudes. | **1\. Sanitización de Datos:** El backend recibe la fila, ubica la celda mapeada como RUT y remueve guiones, puntos y espacios sobrantes (.strip()).**2\. Motor Lógico:** Ejecutar función en Python del Módulo 11 verificando que el último dígito coincida matemáticamente.**3\. (Given/When/Then):** Dada una fila con RUT inválido, cuando el motor termina su revisión, entonces anexa un atributo status: "Error \- Dígito verificador inválido" y empuja el objeto a la lista de rechazados. | 5 |
 | **US-07** | **SGP-19** | EP 4: Validación | **Como** sistema de validación, **quiero** cruzar el nombre con el Maestro, **para** garantizar habilitación. | **1\. Consulta Base:** Realizar un SELECT a la tabla Maestro\_Personas buscando coincidencia por RUT.**2\. Normalización de Cadenas:** Si el RUT existe, el nombre extraído del Excel y el de la BD deben pasar a minúsculas, perder tildes (uso de unidecode o similar) y quitar dobles espacios antes de ser comparados mediante operador \== (o similar de alta similitud).**3\. Tolerancia a Lotes:** El fallo de una fila (por nombre erróneo) invoca la orden continue en el bucle para evaluar la fila siguiente, sin abortar el proceso general. | 5 |
-| **US-08** | **SGP-20** | EP 5: Criptografía | **Como** responsable de seguridad, **quiero** cifrar datos PII, **para** cumplir Ley 19.628. | **1\. Algoritmo Fuerte:** Implementar `cryptography.fernet` sobre los campos validados RUT y Nombre. Fernet proporciona cifrado autenticado basado en AES-128-CBC y HMAC-SHA256.**2\. Custodia de Llaves:** Consumir dinámicamente `AES_SECRET_KEY`.**3\. Evidencia QA:** Al inspeccionar el diccionario previo al guardado en base de datos, el RUT debe verse como un token Base64 (ej. gAAAAABk...) y nunca en texto plano. | 8 |
+| **US-08** | **SGP-20** | EP 5: Criptografía | **Como** responsable de seguridad, **quiero** cifrar datos PII, **para** cumplir Ley 19.628. | **1\. Algoritmo Fuerte:** Implementar cryptography.fernet (AES 128-bit) sobre los campos validados RUT y Nombre.**2\. Custodia de Llaves:** Consumir dinámicamente os.environ.get('AES\_SECRET\_KEY').**3\. Evidencia QA:** Al imprimir el diccionario previo al guardado en base de datos, el RUT debe verse como un token Base64 (ej. gAAAAABk...) y nunca en texto plano. | 8 |
 | **US-09** | **SGP-21** | EP 5: Criptografía | **Como** arquitecto de datos, **quiero** guardar filas en formato documental, **para** soportar formatos variables. | **1\. Modelo Híbrido:** Declarar en Django Models un campo models.JSONField() asociado a la columna nativa JSONB de PostgreSQL en la tabla Registro\_Viaje.**2\. Inserción:** Empaquetar todo el diccionario de la fila (con el RUT y Nombre ya en versión Base64) y persistirlo.**3\. Metadatos:** El ORM debe asociar automáticamente las *Foreign Keys* obligatorias (ID de quien realiza la carga, Fecha y Estado). | 3 |
 | **US-10** | **SGP-22** | EP 4: Feedback | **Como** Cargador, **quiero** recibir un resumen de errores, **para** corregirlos. | **1\. Respuesta Consolidada:** Al culminar el lote, el backend responde con HTTP 200/207 incluyendo { "total\_procesados": X, "total\_errores": Y, "detalle\_errores": \[{fila: N, motivo: "Z"}\] }.**2\. UI/UX:** Renderizar una tabla paginada en React listando los motivos de rechazo.**3\. Estado Cero:** Habilitar un botón "Cargar nueva planilla" que resetee todos los estados de React devolviendo al usuario a la vista de *Drag & Drop*. | 5 |
 
-   
+   > **[Decisiones Aplicadas en Ejecución — Sprint 2 (`SGP-15` a `SGP-22`)]:**
+   > * **Validación Estructural y de Identidad (`SGP-15` a `SGP-19`):** Se valida extensión `.xlsx`, MIME type y tope de `10 MB` tanto en cliente como en servidor; `excel_reader.py` extrae únicamente la fila de encabezados (`nrows=0` con `openpyxl`) y normaliza nombres removiendo tildes (`unicodedata.normalize('NFKD')`) y espacios compuestos para cruzar contra `Maestro_Personas` verificando además `estado_habilitacion=True`.
+   > * **Cifrado Autenticado y Persistencia sin Fuga PII (`SGP-20` y `SGP-21`):** Se utiliza `cryptography.fernet.Fernet` (`AES-128-CBC + HMAC-SHA256`), almacenando `rut_cifrado` y `nombre_cifrado` en `RegistroViaje.payload_datos` (`JSONB`) junto con la `faena` oficial del trabajador, eliminando previamente las llaves originales de RUT y Nombre en texto plano.
+   > * **Trazabilidad Ampliada y Módulo `Mis Cargas` (`SGP-21` y `SGP-22`):** Se crearon las entidades `LoteCarga` (que persiste totales y `detalle_errores` libre de PII) y `RegistroAuditoria` (`PROCESAR_CARGA_VIAJES`), habilitando además la vista **`Mis Cargas` (`/historial`)** para que cada Cargador consulte su historial paginado de lotes.
 
    ### **9.4 Sprint 3: Operatividad B2B y Calidad (Semanas 13-15)** {#9.4-sprint-3:-operatividad-b2b-y-calidad-(semanas-13-15)}
 
@@ -478,14 +488,30 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 | ID Lógico | Código Jira | Épica Asociada | Historia de Usuario | Criterios de Aceptación (Para Jira) | SP |
 | :---- | :---- | :---- | :---- | :---- | :---- |
 | **US-11** | **SGP-23** | EP 6: Operatividad | **Como** Administrador, **quiero** subir un CSV, **para** actualizar el maestro masivamente. | **1\. Control Perimetral:** El controlador DRF debe estar protegido con @permission\_classes restringido al rol de Administrador.**2\. Lógica Upsert:** Usar cláusula on\_conflict\_do\_update (PostgreSQL) para evitar errores de clave primaria; si el RUT existe, actualiza los campos; si no, inserta un registro nuevo.**3\. Feedback UI:** Renderizar alerta con el texto "X registros creados y Y registros actualizados". | 5 |
-| **US-12** | **SGP-24** | EP 6: Operatividad | **Como** Consultor, **quiero** visualizar solicitudes en lectura, **para** auditar procesos. | **1\. Seguridad Endpoint:** Los endpoints de consumo de esta vista solo aceptan métodos GET. Método POST debe devolver HTTP 405/403.**2\. Desencriptación en Memoria:** El backend debe desempaquetar el JSONB, aplicar Fernet decrypt en RAM y devolver los datos en plano a la vista del Consultor.**3\. Filtros y Exportación:** Incluir componentes de UI para filtrar diferenciando fecha de procesamiento y fecha de vuelo cuando esté disponible, además de faena, centro de costo y estado. La exportación CSV del MVP corresponde a los registros actualmente renderizados en la página y no a una exportación masiva del resultado completo. | 8 |
-| **US-15** | **SGP-28** | EP 6: Operatividad | **Como** Administrador, **quiero** gestionar usuarios y roles, **para** mantener el control de acceso del sistema. | **1\. Seguridad:** Solo el rol Administrador puede consultar o modificar cuentas.**2\. Gestión:** La funcionalidad debe permitir crear, consultar, habilitar o deshabilitar usuarios y asignar los roles Administrador, Cargador o Consultor sin exponer contraseñas.**3\. Trazabilidad:** Los cambios deben quedar registrados en `Registro_Auditoria`. | 5 |
-| **US-16** | **SGP-29** | EP 6: Operatividad | **Como** Administrador, **quiero** consultar la auditoría operativa, **para** verificar quién ejecutó cada acción relevante. | **1\. Seguridad:** La consulta debe estar protegida por RBAC y ser de solo lectura.**2\. Trazabilidad:** Debe mostrar usuario, fecha, módulo, acción y resultado, sin incluir PII innecesaria.**3\. Exportación:** Debe permitir exportar los eventos autorizados respetando los filtros aplicados. | 5 |
+| **US-12** | **SGP-24** | EP 6: Operatividad | **Como** Consultor, **quiero** visualizar solicitudes en lectura, **para** auditar procesos. | **1\. Seguridad Endpoint:** Los endpoints de consumo de esta vista solo aceptan métodos GET. Método POST debe devolver HTTP 405/403.**2\. Desencriptación en Memoria:** El backend debe desempaquetar el JSONB, aplicar ingeniería inversa de AES (Fernet decrypt) en RAM y devolver los datos en plano a la vista del Consultor.**3\. Filtros y Exportación:** Incluir componentes de UI para filtrar por fecha y exportar la tabla renderizada utilizando librerías estandarizadas de exportación CSV en React. | 8 |
 | **US-13** | **SGP-25** | EP 7: QA y NFRs | **Como** Lead de QA, **quiero** ejecutar pruebas unitarias, **para** certificar el motor de validación. | **1\. Suite Local:** Desarrollar al menos 5 *tests* en pytest para la función del Módulo 11 (2 RUTs válidos, 2 inválidos, 1 alfanumérico).**2\. Cobertura Normalización:** Evaluar la función de estandarización de nombres (comprobando remoción de tildes y espacios compuestos).**3\. Ejecución CI:** Configurar comando docker-compose exec backend pytest comprobando que finaliza en Pass 100%. | 5 |
 | **US-14** | **SGP-26** | EP 7: QA y NFRs | **Como** Lead de QA, **quiero** pruebas de carga y vulnerabilidad, **para** asegurar rendimiento. | **1\. Rendimiento Lote (NFR):** Simular en *localhost* la subida de un archivo de 5.000 filas. El servidor debe retornar el resultado sin colapsar por *Timeout* (HTTP 504\) dentro de un margen razonable de tiempo (ej. \<30 segundos).**2\. Evidencia Criptográfica:** El QA debe acceder a PostgreSQL nativo (DBeaver/psql), hacer un SELECT \* FROM registro\_viaje y tomar captura de pantalla demostrando que no existe rastro humano legible dentro de la columna JSONB. | 8 |
 | **US-15** | **SGP-27** | EP 7: Despliegue | **Como** equipo, **quiero** desplegar en Cloud, **para** entregar la plataforma. | **1\. Despliegue Continuo (CI/CD):** Habilitar despliegue automático desde la rama main hacia Vercel (Frontend) y Render/Railway (Backend API).**2\. Integración Neon DB:** Conectar el entorno de producción a PostgreSQL Neon Cloud.**3\. Secrecía de Llaves (NFR):** Garantizar que las variables de entorno se ingresan directamente a la plataforma PaaS y jamás residen en el repositorio remoto. | 5 |
 
    *(Nota: El **Sprint 4 (Semanas 16-18)** no se incluye en esta tabla transaccional ya que está reservado exclusivamente para métricas de calidad, preparación de defensa oral y congelamiento de código).*
+
+   #### **9.4.1 Ampliaciones de Alcance Incorporadas en Ejecución y Solicitud Docente (`SGP-28` a `SGP-30` — +18 SP)**
+
+   Sin alterar las 20 entradas de la línea base histórica de Fase 1 (`91 SP`), durante el desarrollo de Fase 2 y la revisión con el Profesor Guía se formalizaron las siguientes **3 historias complementarias en Sprint 3 (`18 SP` adicionales; Backlog total vigente = `109 SP`)**:
+
+| ID Lógico | Código Ticket | Épica Asociada | Historia de Usuario / Tarea Extra | Criterios de Aceptación | SP |
+| :---- | :---- | :---- | :---- | :---- | :---- |
+| **US-16** | **SGP-28** | EP 6: Operatividad | **Como** Administrador, **quiero** gestionar usuarios y roles desde la interfaz web, **para** mantener el control de acceso corporativo del sistema. | **1\. Protección RBAC:** Los endpoints (`/api/v1/users/`) y la ruta `/usuarios` están restringidos exclusivamente al rol `Administrador`. **2\. Gestión Segura de Cuentas:** Permite consultar, crear, habilitar o deshabilitar cuentas y asignar roles (`Administrador`, `Cargador`, `Consultor`) aplicando hashing `Argon2` y sin exponer jamás hashes ni contraseñas en las respuestas JSON. **3\. Trazabilidad:** Toda alta o cambio de estado/rol queda registrado en `RegistroAuditoria`. | 5 |
+| **US-17** | **SGP-29** | EP 6: Operatividad | **Como** Administrador, **quiero** consultar la bitácora de auditoría operativa en el frontend, **para** verificar quién ejecutó cada acción crítica del sistema. | **1\. Consulta Solo Lectura:** El endpoint `GET /api/v1/audit-logs/` y la ruta `/auditoria` están protegidos por RBAC (`IsAdministradorRole`) y rechazan métodos mutables (`405`). **2\. Privacidad y Filtros:** Muestra usuario, fecha/hora, módulo, acción y metadatos de resultado filtrables por módulo/fecha/búsqueda, sin incluir PII sensible. **3\. Exportación:** Permite descargar en `.csv` (UTF-8 BOM) los eventos auditados visibles según los filtros activos. | 5 |
+| **US-EXTRA-01** | **SGP-30** | EP 3 / EP 4: Mapper y Validación *(Solicitud Profesor)* | **Como** Cargador, **quiero** un asistente visual paso a paso que muestre el análisis del archivo, la comparación de encabezados, la vista previa de la tabla estandarizada a subir y las etapas internas del procesamiento, **para** comprender visualmente todo lo que ejecuta la plataforma antes y durante la carga. | **1\. Stepper Visual e Inspección de Archivo:** Presentar barra de progreso en 4 etapas y tarjeta resumen del `.xlsx` (nombre, peso, total de filas útiles y columnas detectadas). **2\. Comparador Visual de Encabezados:** Mostrar lado a lado cada columna del Excel (con 2–3 valores reales de muestra) frente al esquema destino SGP-Minero, diferenciando campos obligatorios PII (`RUT`, `Nombre`) de columnas dinámicas (`JSONB`). **3\. Vista Previa de Tabla Final:** Antes de confirmar la subida, renderizar una previsualización de la tabla estandarizada resultante indicando pre-chequeo de formato e insignias de cifrado `Fernet`. **4\. Trazabilidad Visual del Backend + Resumen `SGP-22`:** Mostrar visualmente las 4 etapas internas ejecutadas (*Limpieza Pandas -> Módulo 11 -> Cruce `Maestro_Personas` + `Faena` -> Cifrado `AES/Fernet` + `JSONB`*) con sus conteos reales, conservando íntegro el resumen de aprobados/rechazados y detalle de errores por fila (`SGP-22`). | 8 |
+
+   > **[Decisiones Aplicadas y Estado en Ejecución — Sprint 3 (`SGP-23` a `SGP-30`)]:**
+   > * **`US-11 / SGP-23`:** El importador del Administrador (`POST /api/v1/master-persons/import/`) soporta `.csv` y `.xlsx`, incorpora `faena` como campo obligatorio junto a `rut`, `nombre_completo` y `centro_costo`, ejecuta `update_or_create` transaccional y se complementa con el listado paginado `GET /api/v1/master-persons/` *(pendiente ajuste menor en UI para desglosar `creados` vs `actualizados` y paginador)*.
+   > * **`US-12 / SGP-24`:** `GET /api/v1/dashboard/records/` filtra por `from`/`to` (`fecha_procesamiento`), `faena`, `centro_costo` y `estado`, descifra PII únicamente en memoria RAM y habilita exportación CSV UTF-8 BOM en el navegador para la página activa renderizada *(pendiente conectar `useOutletContext` para `faena` en `DashboardView.jsx` y optimizar `select_related`)*.
+   > * **`US-13 / SGP-25`:** La suite automatizada alcanzó **34 pruebas** distribuidas en 5 módulos (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`, `core/services/tests_master_import.py` y `core/services/tests_dashboard.py`), integradas al pipeline CI de GitHub Actions.
+   > * **`US-14 / SGP-26` y `US-15 / SGP-27`:** La arquitectura Cloud (`production_entrypoint.sh`, `gunicorn`, `GET /api/v1/health/`, soporte `DATABASE_URL` SSL para Neon y endurecimiento HSTS/Cookies) ya está preparada en código; restan optimizar `bulk_create` + ejecutar el benchmark de 5.000 filas con captura SQL y publicar las URLs definitivas en Vercel/Render/Neon.
+   > * **`US-16 / SGP-28` y `US-17 / SGP-29`:** Cuentan con el soporte de modelos en BD (`Rol`, `Usuario` con `Argon2`, `RegistroAuditoria`) y las interfaces React ya maquetadas en `UsersView.jsx` y `AuditView.jsx`; resta implementar sus endpoints DRF (`/api/v1/users/` y `/api/v1/audit-logs/`), conectar las vistas a `api.js` y habilitar las rutas `/usuarios` y `/auditoria` en `App.jsx` y `MainLayout.jsx`.
+   > * **`US-EXTRA-01 / SGP-30`:** Planificada formalmente a solicitud del Profesor Guía para transparentar de forma visual todo el pipeline de ingesta en `UploadExcelView.jsx` sin alterar el reporte de errores `SGP-22`.
 
    
 
@@ -512,39 +538,46 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
 
 * **SGP-23:** Endpoint de actualización masiva (CSV/Upsert) para el Mantenedor del Administrador.  
 * **SGP-24:** Dashboard corporativo de solo lectura con filtros dinámicos para auditorías del Consultor.  
-* **SGP-28:** Gestión de Usuarios para administrar cuentas, roles y estados de habilitación desde una superficie protegida para el Administrador.
-* **SGP-29:** Auditoría de eventos operativos, consultas y acciones relevantes, con acceso controlado y exportación de los eventos autorizados.
 * **SGP-25 y SGP-26:** Ejecución de pruebas automatizadas (unitarias/integración) y pruebas de rendimiento simulando 5.000 filas concurrentes (QA).  
 * **SGP-27:** Despliegue en producción mediante plataformas Cloud (Vercel, Render y Neon PostgreSQL).
+* **SGP-28 y SGP-29 *(Incorporados en Fase 2 — En desarrollo)*:** Gestión administrativa de usuarios/roles (`UsersView.jsx` + `/api/v1/users/`) y consulta/exportación de la bitácora operativa (`AuditView.jsx` + `/api/v1/audit-logs/`).
+* **SGP-30 *(Incorporado por solicitud del Profesor Guía — Planificado)*:** Asistente visual paso a paso en la vista del Cargador (comparación visual de encabezados, previsualización de la tabla final a subir y visualización de las etapas internas del motor backend).
 
   ### **Won't Have (Fuera de Alcance Estricto)** {#won't-have-(fuera-de-alcance-estricto)}
 
-  Límites operativos definidos para asegurar la factibilidad técnica y evitar desviaciones del MVP.  
+  Límites operativos definidos originalmente en Fase 1 para asegurar la factibilidad técnica y evitar desviaciones del MVP:  
 * Conexiones automatizadas o integraciones con sistemas ERP externos corporativos (como SAP o Buk).  
 * Verificación de identidad mediante APIs gubernamentales o de servicios de terceros para evitar la fuga de datos PII.  
-* Centro de emisión, agencia, canal de compra y sitio operacional del pasaje, debido a que todavía no existe una definición empresarial ni un catálogo oficial para esos conceptos.
-* Integraciones con proveedores de pasajes, agencias, canales de compra o sitios operacionales externos.
+* Desarrollo de interfaces Frontend (React) para la creación, edición y gestión de cuentas de usuario (CRUD de Cargadores y Consultores). Para proteger los tiempos de desarrollo del MVP y priorizar el flujo crítico de ingesta, la administración de credenciales y asignación de roles se delegará nativamente al panel de administración seguro del backend (Django Admin). *(Nota de Evolución Vigente: habiéndose completado tempranamente el motor crítico de ingesta y criptografía del Sprint 2, el equipo promovió en Fase 2 este ítem a alcance `Should Have` bajo el ticket **`US-16 / SGP-28`** junto con la vista de Auditoría **`US-17 / SGP-29`**, adelantando sus maquetas en `UsersView.jsx` y `AuditView.jsx` y manteniendo `/admin/` como consola administrativa auxiliar).*
+* Dimensiones logísticas secundarias tales como **centro de emisión**, **agencia de viajes**, **canal de compra** o **sitio operacional** quedan fuera del alcance del MVP mientras no exista una definición empresarial y un catálogo corporativo oficial.
 
-  ## **11\. Arquitectura y Diseño de la Solución (Respaldos del Pitch)** {#11.-arquitectura-y-diseño-de-la-solución-(respaldos-del-pitch)}
+  ## 
 
-  Esta sección consolida la especificación técnica, el modelo de datos y las propuestas visuales que garantizan la viabilidad de la plataforma SGP-Minero.
+## 
 
-  ### **11.1 Tecnologías a Utilizar (Stack Tecnológico)** {#11.1-tecnologías-a-utilizar-(stack-tecnológico)}
+## **11\. Arquitectura y Diseño de la Solución (Respaldos del Pitch)** {#11.-arquitectura-y-diseño-de-la-solución-(respaldos-del-pitch)}
 
-  El ecosistema tecnológico ha sido seleccionado bajo criterios de alta disponibilidad, seguridad B2B y compatibilidad con arquitecturas Cloud-Native (Serverless).  
+Esta sección consolida la especificación técnica, el modelo de datos y las propuestas visuales que garantizan la viabilidad de la plataforma SGP-Minero.
+
+### **11.1 Tecnologías a Utilizar (Stack Tecnológico)** {#11.1-tecnologías-a-utilizar-(stack-tecnológico)}
+
+El ecosistema tecnológico ha sido seleccionado bajo criterios de alta disponibilidad, seguridad B2B y compatibilidad con arquitecturas Cloud-Native (Serverless).
+
 * **Capa de Presentación (Frontend):**  
-  * **React.js (Vite):** Seleccionado por su velocidad de compilación y su capacidad para construir Single Page Applications (SPA) reactivas, ideal para la manipulación asíncrona del *Mapper UI*.  
-  * **Tailwind CSS:** Para un diseño de interfaz B2B limpio, utilitario y sin sobrecarga de estilos CSS personalizados.  
+  * **React.js 19 (Vite 8) + `pnpm`:** Seleccionado por su velocidad de compilación y su capacidad para construir Single Page Applications (SPA) reactivas, ideal para la manipulación asíncrona del *Mapper UI*.  
+  * **React Router DOM v7 (`BrowserRouter`):** Enrutamiento cliente protegido mediante `<ProtectedRoute>` (`/`, `/carga`, `/historial`, `/dashboard`).  
+  * **Tailwind CSS + Lucide React:** Para un diseño de interfaz B2B limpio, utilitario y sin sobrecarga de estilos CSS personalizados.  
 * **Capa de Lógica y Procesamiento (Backend):**  
-  * **Python / Django:** Provee un marco de trabajo robusto y escalable, con mitigación nativa de vulnerabilidades (CSRF, SQL Injection).  
-  * **Django REST Framework (DRF):** Para la construcción estructurada de los endpoints de la API consumidos por el frontend.  
-  * **Librería Pandas:** Fundamental para la ingesta y manipulación en memoria de estructuras de datos pesadas (archivos .xlsx y .csv) sin saturar el procesador del servidor.  
-  * **Librería Cryptography (Fernet):** Estándar industrial para implementar el cifrado simétrico AES de 128-bit sobre los datos PII.  
+  * **Python 3.11 / Django 5.2 + Gunicorn:** Provee un marco de trabajo robusto y escalable, con mitigación nativa de vulnerabilidades (CSRF, SQL Injection) y servidor WSGI productivo.  
+  * **Django REST Framework (DRF) + SimpleJWT + Argon2 (`argon2-cffi`):** Para la construcción estructurada de los endpoints `/api/v1/`, emisión de pares JWT (`Access` en RAM + `Refresh` en cookie `HttpOnly`) y hashing resistente a GPU.  
+  * **Librerías Pandas + Openpyxl:** Fundamentales para la ingesta y manipulación en memoria de estructuras de datos pesadas (archivos `.xlsx` y `.csv`) sin saturar el procesador del servidor.  
+  * **Librería Cryptography (`Fernet` — `AES-128-CBC + HMAC-SHA256`):** Estándar industrial para implementar cifrado simétrico autenticado sobre los datos PII mediante `AES_SECRET_KEY`.  
   * **Librería django-cors-headers:** Componente crítico para la protección de la API. Configurada de forma estricta para aceptar peticiones *únicamente* desde el dominio exacto del frontend en producción (Vercel). Queda estrictamente prohibido el uso de `CORS_ALLOW_ALL = True` fuera del entorno local para mitigar ataques de falsificación de peticiones en sitios cruzados.   
 * **Capa de Persistencia (Base de Datos):**  
-  * **PostgreSQL:** Motor de base de datos relacional open-source seleccionado por su soporte nativo y optimizado para la columna JSONB, permitiendo la arquitectura híbrida.  
-* **DevSecOps e Infraestructura Cloud:**  
-  * **Docker:** Contenerización del entorno local para asegurar homogeneidad en el desarrollo del equipo.  
+  * **PostgreSQL 15:** Motor de base de datos relacional open-source seleccionado por su soporte nativo y optimizado para la columna JSONB, permitiendo la arquitectura híbrida.  
+* **DevSecOps, QA e Infraestructura Cloud:**  
+  * **Docker & Docker Compose:** Contenerización del entorno local para asegurar homogeneidad en el desarrollo del equipo.  
+  * **GitHub Actions CI + Pytest + Oxlint:** Integración continua automatizada (`.github/workflows/ci.yml`) que ejecuta linting, compilación frontend y **34 pruebas automatizadas** backend en cada integración.  
   * **Vercel / Render / Neon:** Proveedores Cloud (PaaS/DBaaS) para el despliegue seguro, continuo e independiente de cada capa de la arquitectura.  
 * **GitHub repositorio**: https://github.com/andy0noxo/sgp-minero.git  
   
@@ -572,7 +605,6 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   * id (PK, UUID) *(Mejor práctica que usar RUT como PK)*  
   * rut (Varchar, Unique, Indexado)  
   * nombre\_completo (Varchar, Normalizado en minúsculas y sin tildes)  
-  * faena (Varchar, Obligatorio: operación minera asociada)
   * centro\_costo (Varchar)  
   * estado\_habilitacion (Boolean: True=Puede viajar, False=Desvinculado)  
 * **4\. Entidad Registro\_Viaje (Tabla Híbrida / Documental)**  
@@ -580,15 +612,20 @@ El flujo de trabajo actual presenta tres fallas sistémicas que degradan la oper
   * cargador\_id (FK \-\> Usuario.id) *(Garantiza Accountability)*  
   * nombre\_archivo\_origen (Varchar) *(Trazabilidad del lote)*  
   * fecha\_procesamiento (Timestamp)  
-  * fecha\_vuelo (Date, Nullable cuando la planilla no informa la fecha del viaje)
   * estado\_validacion (Varchar: Aprobado, Rechazado)  
   * motivo\_rechazo (Varchar, Nullable) *(Almacena el error del Módulo 11 o cruce de maestro)*  
-  * **payload\_datos (JSONB):** Columna clave del sistema. Almacena el diccionario dinámico del Excel entrante. Los campos correspondientes al RUT y Nombre Completo se insertan aquí exclusivamente como *tokens* ininteligibles tras pasar por Fernet, basado en AES-128-CBC y HMAC-SHA256, garantizando el cumplimiento de la Ley N° 19.628.
-* **5\. Gestión de Usuarios y Auditoría (Módulo de Gobierno)**
-  * Gestión de Usuarios permite crear, consultar, habilitar o deshabilitar cuentas y asignar los roles del MVP desde una superficie protegida para el Administrador.
-  * Registro\_Auditoria conserva los eventos operativos relevantes, el usuario responsable, la fecha, el módulo, la acción y el resultado. Su consulta está restringida según RBAC y su metadata no debe contener PII innecesaria.
+  * **payload\_datos (JSONB):** Columna clave del sistema. Almacena el diccionario dinámico del Excel entrante. Los campos correspondientes al RUT y Nombre Completo se insertan aquí exclusivamente como *tokens* ininteligibles tras pasar por el cifrado simétrico AES-128, garantizando el cumplimiento de la Ley N° 19.628.
 
 ![][image1]
+
+  > **[Evolución al Esquema Físico Implementado en Django/PostgreSQL (`migrations/0001` a `0005` — 6 Entidades)]:**
+  > Durante la construcción en Sprints 1 a 3, el bosquejo inicial de 4 tablas se refinó sin romper su arquitectura híbrida hacia **6 entidades gestionadas íntegramente por migraciones Django** (`backend/core/models.py`):
+  > 1. **`Rol` (`core_rol`):** Catálogo paramétrico RBAC (`Administrador`, `Cargador`, `Consultor`).
+  > 2. **`Usuario` (`core_usuario`, PK `UUID`):** Incorpora `rut` normalizado único, `email_corporativo` único, hash `Argon2` y los campos de defensa anti-fuerza bruta `failed_login_attempts` y `locked_until`, con clave foránea `PROTECT` hacia `Rol`.
+  > 3. **`Maestro_Personas` (`core_maestro_personas`, PK `UUID`):** Añade el atributo obligatorio **`faena`** (operación minera: ej. `Faena Cordillera`, `Faena Norte`, `Faena Central`) diferenciado contablemente de `centro_costo`, además de `rut` único indexado, `nombre_completo` y `estado_habilitacion`.
+  > 4. **`LoteCarga` (`lote_carga`, PK `UUID` — *Nueva entidad de cabecera*):** Agrupa cada operación de ingesta de un `Cargador` (`cargador_id` con `PROTECT`), registrando `nombre_archivo_origen`, `estado` (`PROCESADO`, `PROCESADO_CON_ERRORES`, `RECHAZADO`), `total_filas`, `total_procesados`, `total_rechazados` y `detalle_errores` (`JSONB` libre de PII).
+  > 5. **`RegistroViaje` (`registro_viaje`, PK `UUID`):** Se vincula tanto a `Usuario` (`cargador_id`) como a `LoteCarga` (`lote_id`) con integridad `PROTECT`, añade `fila_origen` e índices compuestos `(fecha_procesamiento, estado_validacion)` y `(cargador, fecha_procesamiento)`, y resguarda en `payload_datos` (`JSONB`) los campos `rut_cifrado` y `nombre_cifrado` (tokens `Fernet`), la `faena` propagada desde el maestro y las columnas dinámicas restantes del Excel.
+  > 6. **`RegistroAuditoria` (`registro_auditoria`, PK `UUID` — *Nueva entidad de trazabilidad*):** Bitácora inmutable de acciones críticas (`PROCESAR_CARGA_VIAJES`, `IMPORTAR_MAESTRO_PERSONAS`) con metadatos estructurados en `JSONB` sin PII.
 
 ### **11.3 Diagrama de Arquitectura (Componentes, Despliegue y Flujo de Datos)** {#11.3-diagrama-de-arquitectura-(componentes,-despliegue-y-flujo-de-datos)}
 
@@ -600,12 +637,12 @@ La plataforma SGP-Minero opera bajo una arquitectura de microservicios desacopla
    * **Navegador Web:** Punto de acceso del usuario (Cargador, Admin, Consultor). Maneja el estado global y almacena el JWT en memoria volátil.  
 2. **Capa de Presentación (Frontend Cloud \- Alojado en Vercel):**  
    * **React SPA (Single Page Application):** Aplicación compilada con Vite.  
-   * **Componentes Clave:** Guardia de autorización dentro de la SPA, Módulo de Ingesta (Drag & Drop), Mapper UI, Gestión de Usuarios, Auditoría y Vistas de Dashboard.
+   * **Componentes Clave:** Enrutador protegido (Protected Routes), Módulo de Ingesta (Drag & Drop), Mapper UI, y Vistas de Dashboard.  
 3. **Capa de Lógica de Negocio (Backend Cloud \- Alojado en Render/Railway):**  
    * **API Gateway / Enrutador:** Expone los endpoints de Django REST Framework (DRF).  
    * **Middleware de Seguridad:** Valida el JWT y el Control de Acceso Basado en Roles (RBAC).  
    * **Motor de Procesamiento (Pandas):** Lee la primera fila y procesa iterativamente los DataFrames.  
-   * **Motor Criptográfico (Fernet):** Cifra y descifra la PII al vuelo utilizando la llave `AES_SECRET_KEY` inyectada en el entorno.
+   * **Motor Criptográfico (AES/Fernet):** Encripta/Desencripta la PII al vuelo utilizando la llave AES\_SECRET\_KEY inyectada en el entorno.  
 4. **Capa de Persistencia (Base de Datos Cloud \- Alojado en Neon):**  
    * **PostgreSQL (Serverless DB):** Clúster de base de datos que alberga tanto los esquemas relacionales (Maestro\_Personas, Usuario) como la columna documental (JSONB).  
 5. **Entorno DevSecOps (Pipeline CI/CD):**  
@@ -627,6 +664,8 @@ La plataforma SGP-Minero opera bajo una arquitectura de microservicios desacopla
   * El ORM realiza un INSERT de la fila empaquetada hacia la columna JSONB en Neon PostgreSQL (Conexión segura TCP/SSL).  
 * **Paso 6 (Respuesta):** Render devuelve un JSON de retroalimentación a Vercel $\rightarrow$ Vercel actualiza el navegador del usuario mostrando la tabla de errores o el mensaje de éxito.  
   **![][image2]**
+
+  > **[Rutas Reales Versionadas de la API REST (`/api/v1/`)]:** En la implementación efectiva del backend (`backend/core/urls.py`), el flujo del diagrama opera bajo el prefijo versionado `/api/v1/`: salud pública en `GET /api/v1/health/`; autenticación y sesión en `POST /api/v1/auth/login/`, `POST /api/v1/auth/refresh/`, `POST /api/v1/auth/logout/` y `GET /api/v1/auth/me/`; pre-ingesta e ingesta del Cargador en `POST /api/v1/uploads/headers/`, `POST /api/v1/uploads/process/` e historial en `GET /api/v1/uploads/history/` y `/<lote_id>/`; mantenedor del Administrador en `POST /api/v1/master-persons/import/` y `GET /api/v1/master-persons/`; y consulta auditada del Consultor en `GET /api/v1/dashboard/records/`.
 
   ### **11.4 Mockups (Guía de Diseño y Propuestas de Interfaces UI/UX)** {#11.4-mockups-(guía-de-diseño-y-propuestas-de-interfaces-ui/ux)}
 
@@ -659,6 +698,8 @@ La plataforma SGP-Minero opera bajo una arquitectura de microservicios desacopla
 * **Mockup:**  
   ![][image4]  
   *Vista 2: Panel de Navegación Global (Layout Base)*   
+
+  > **[Nota de Implementación sobre Vista 2 (`MainLayout.jsx`)]:** En la implementación real del layout corporativo se incorporó en la barra superior el selector contextual de **`Faena`** (`Faena Cordillera`, `Faena Norte`, `Faena Central`). Actualmente el menú lateral del rol **Administrador** tiene operativo **Mantenedor de Personas** (`/carga`), restando habilitar en cierre de Sprint 3 los enlaces hacia **Gestión de Usuarios** (`/usuarios` — `SGP-28`) y **Auditoría Operativa** (`/auditoria` — `SGP-29`) al conectar `UsersView.jsx` y `AuditView.jsx` con la API DRF.
   
 
 
@@ -754,6 +795,8 @@ Habiendo concluido exitosamente la **Fase 1** (Definición del Proyecto, Arquite
 * **Hito 4: Sprint 4 \- Despliegue y Defensa (Semanas 16 a 18):**  
   * Despliegue continuo (CI/CD) de la plataforma en entornos Cloud (Vercel para Frontend, Render para Backend API).  
   * Congelamiento de código y consolidación de la presentación final (Pitch) para la comisión evaluadora.
+
+  > **[Estado Real de Avance al `2026-11-06`]:** El proyecto se encuentra en fase activa de construcción (**`82,2%` completado sobre los `91 SP` de la línea base Fase 1; `72,3%` sobre los `109 SP` del alcance vigente ampliado**). **Sprint 0**, **Sprint 1** y **Sprint 2** están operativos en entorno contenerizado; en **Sprint 3** ya funcionan el Mantenedor Masivo, el Dashboard Corporativo, el módulo *Mis Cargas* y **34 pruebas automatizadas en CI**, quedando como trabajo planificado pendiente corregir detalles puntuales de UI/filtros, conectar los endpoints y rutas de **Gestión de Usuarios (`SGP-28`)** y **Auditoría (`SGP-29`)**, implementar el **asistente visual paso a paso del Cargador (`SGP-30`)** solicitado por el Profesor Guía, ejecutar el benchmark de 5.000 filas + captura SQL (`SGP-26`) y cerrar el despliegue Cloud (`SGP-27`) previo al **Sprint 4**. El desglose completo de estimaciones por historia se detalla en [`docs/INFORME_REVISION_Y_AVANCE_SGP_MINERO.md`](INFORME_REVISION_Y_AVANCE_SGP_MINERO.md).
 
   ### **12.2 Conclusiones** {#12.2-conclusiones}
 

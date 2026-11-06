@@ -6,39 +6,42 @@ from core.services.encryption import decrypt_pii
 
 def _plain_payload(payload):
     data = dict(payload or {})
-    if 'rut_cifrado' in data:
-        data['rut'] = decrypt_pii(data.pop('rut_cifrado'))
-    if 'nombre_cifrado' in data:
-        data['nombre_completo'] = decrypt_pii(data.pop('nombre_cifrado'))
+    if "rut_cifrado" in data:
+        data["rut"] = decrypt_pii(data.pop("rut_cifrado"))
+    if "nombre_cifrado" in data:
+        data["nombre_completo"] = decrypt_pii(data.pop("nombre_cifrado"))
     return data
 
 
 def get_dashboard_records(filters):
-    records = RegistroViaje.objects.select_related('lote').all()
-    start_date = filters.get('from')
-    end_date = filters.get('to')
-    operation = filters.get('faena')
-    cost_center = filters.get('centro_costo')
+    records = RegistroViaje.objects.select_related("lote").all()
+    start_date = filters.get("from")
+    end_date = filters.get("to")
+    operation = filters.get("faena")
+    cost_center = filters.get("centro_costo")
 
     if start_date:
         records = records.filter(fecha_procesamiento__date__gte=start_date)
     if end_date:
         records = records.filter(fecha_procesamiento__date__lte=end_date)
-    if filters.get('estado'):
-        records = records.filter(estado_validacion=filters['estado'])
+    if filters.get("estado"):
+        records = records.filter(estado_validacion=filters["estado"])
     if operation:
         records = [
-            record for record in records
-            if str(record.payload_datos.get('faena', '')).casefold() == operation.casefold()
+            record
+            for record in records
+            if str(record.payload_datos.get("faena", "")).casefold()
+            == operation.casefold()
         ]
     if cost_center:
         records = [
-            record for record in records
+            record
+            for record in records
             if cost_center.casefold() in str(record.payload_datos).casefold()
         ]
 
-    page_number = filters.get('page', 1)
-    page_size = min(filters.get('page_size', 25), 100)
+    page_number = filters.get("page", 1)
+    page_size = min(filters.get("page_size", 25), 100)
     paginator = Paginator(records, page_size)
     try:
         page = paginator.page(page_number)
@@ -46,26 +49,26 @@ def get_dashboard_records(filters):
         page = paginator.page(paginator.num_pages or 1)
 
     return {
-        'results': [
+        "results": [
             {
-                'id': str(record.id),
-                'lote_id': str(record.lote_id),
-                'nombre_archivo_origen': record.nombre_archivo_origen,
-                'fila_origen': record.fila_origen,
-                'fecha_procesamiento': record.fecha_procesamiento.isoformat(),
-                'cargador_responsable': (
+                "id": str(record.id),
+                "lote_id": str(record.lote_id),
+                "nombre_archivo_origen": record.nombre_archivo_origen,
+                "fila_origen": record.fila_origen,
+                "fecha_procesamiento": record.fecha_procesamiento.isoformat(),
+                "cargador_responsable": (
                     record.cargador.email_corporativo or record.cargador.rut
                 ),
-                'estado_validacion': record.estado_validacion,
-                'motivo_rechazo': record.motivo_rechazo,
-                'datos': _plain_payload(record.payload_datos),
+                "estado_validacion": record.estado_validacion,
+                "motivo_rechazo": record.motivo_rechazo,
+                "datos": _plain_payload(record.payload_datos),
             }
             for record in page.object_list
         ],
-        'pagination': {
-            'page': page.number,
-            'page_size': page.paginator.per_page,
-            'total': paginator.count,
-            'pages': paginator.num_pages,
+        "pagination": {
+            "page": page.number,
+            "page_size": page.paginator.per_page,
+            "total": paginator.count,
+            "pages": paginator.num_pages,
         },
     }

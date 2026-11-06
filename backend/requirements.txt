@@ -11,3 +11,5 @@ pytest>=8,<9
 pytest-django>=4.9,<5
 gunicorn>=23,<24
 argon2-cffi>=23.0.0
+flake8>=7.1,<8
+black>=24.8,<26
