@@ -1,3 +1,4 @@
+import math
 import re
 
 
@@ -6,9 +7,14 @@ class RutValidationError(ValueError):
 
 
 def normalize_rut(value):
-    if value is None:
+    if value is None or (isinstance(value, float) and math.isnan(value)):
         raise RutValidationError("El RUT es obligatorio.")
-    normalized = re.sub(r"[\s.-]", "", str(value)).upper()
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    raw_str = str(value).strip()
+    if re.fullmatch(r"\d+\.0", raw_str):
+        raw_str = raw_str[:-2]
+    normalized = re.sub(r"[\s.-]", "", raw_str).upper()
     if not re.fullmatch(r"\d{7,8}[0-9K]", normalized):
         raise RutValidationError("El formato del RUT no es válido.")
     return f"{normalized[:-1]}-{normalized[-1]}"

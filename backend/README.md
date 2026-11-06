@@ -295,7 +295,7 @@ python manage.py check --deploy
 
 ## Cobertura de QA
 
-La suite automatizada actual cuenta con **42 pruebas** distribuidas en 5 módulos
+La suite automatizada actual cuenta con **46 pruebas** distribuidas en 5 módulos
 (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
 `core/services/tests_master_import.py` y `core/services/tests_dashboard.py`) y
 ejecutadas automáticamente en GitHub Actions (`.github/workflows/ci.yml`),
@@ -308,11 +308,13 @@ cubriendo:
   (`core/tests.py`).
 - Idempotencia del comando `seed_demo_data`, preservación de contraseñas y
   bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
-- Validación matemática de RUT (Módulo 11), normalización de nombres sin tildes
-  ni espacios sobrantes, coincidencia contra el maestro y validación estricta del
-  mapeo dinámico de columnas (`validate_mapper`: campos obligatorios `map_rut` y
-  `map_nombre`, columnas existentes y prohibición de misma columna)
-  (`core/services/tests.py`).
+- Validación matemática de RUT (Módulo 11 con soporte para dígitio `K` minúscula/mayúscula,
+  formato con o sin puntos/guión, enteros numéricos y números flotantes sin sufijo `.0`),
+  lectura de nóminas Excel/CSV con `dtype=object` para evitar alteraciones de tipo,
+  normalización de nombres sin tildes ni espacios sobrantes, coincidencia contra el
+  maestro y validación estricta del mapeo dinámico de columnas (`validate_mapper`:
+  campos obligatorios `map_rut` y `map_nombre`, columnas existentes y prohibición de
+  misma columna) (`core/services/tests.py`).
 - Cifrado y descifrado autenticado con `Fernet` y manejo de llaves inválidas o
   ausentes (`core/services/tests.py`).
 - Lectura exclusiva de encabezados Excel (`nrows=0`), rechazo de archivos

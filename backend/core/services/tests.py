@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 
 from core.models import Maestro_Personas
 from core.services.encryption import decrypt_pii, encrypt_pii
-from core.services.excel_reader import FileProcessingError, read_headers
+from core.services.excel_reader import FileProcessingError, read_headers, read_rows
 from core.services.identity_matcher import find_matching_person, normalize_name
 from core.services.mapper import MapperValidationError, validate_mapper
 from core.services.rut_validator import is_valid_rut, validate_rut
@@ -27,6 +27,16 @@ class ServiceTests(TestCase):
 
     def test_invalid_rut_with_alphanumeric_body(self):
         self.assertFalse(is_valid_rut("12345678-X"))
+
+    def test_valid_rut_with_k_verifier_lowercase(self):
+        self.assertEqual(validate_rut("10.000.013-k"), "10000013-K")
+
+    def test_valid_rut_from_numeric_integer(self):
+        self.assertEqual(validate_rut(123456785), "12345678-5")
+
+    def test_valid_rut_from_float_and_float_string_representation(self):
+        self.assertEqual(validate_rut(123456785.0), "12345678-5")
+        self.assertEqual(validate_rut("123456785.0"), "12345678-5")
 
     def test_name_normalization_ignores_case_accents_and_spaces(self):
         self.assertEqual(normalize_name("  María   José Pérez "), "maria jose perez")
@@ -64,6 +74,17 @@ class ServiceTests(TestCase):
         invalid = SimpleUploadedFile("nomina.txt", b"content")
         with self.assertRaises(FileProcessingError):
             read_headers(invalid)
+
+    def test_read_rows_with_dtype_object_preserves_numeric_ruts(self):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            pd.DataFrame([{"RUT": 123456785, "Nombre": "Juan Perez"}]).to_excel(
+                writer, index=False
+            )
+        upload = SimpleUploadedFile("nomina_numerica.xlsx", output.getvalue())
+        df = read_rows(upload)
+        rut_read = df.iloc[0]["RUT"]
+        self.assertEqual(validate_rut(rut_read), "12345678-5")
 
     def test_require_env_secret_fails_when_missing_or_empty(self):
         def fake_env(key, default=""):

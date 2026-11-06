@@ -42,9 +42,9 @@ def read_rows(uploaded_file):
     try:
         uploaded_file.seek(0)
         return (
-            pd.read_csv(uploaded_file)
+            pd.read_csv(uploaded_file, dtype=object)
             if extension == ".csv"
-            else pd.read_excel(uploaded_file, engine="openpyxl")
+            else pd.read_excel(uploaded_file, engine="openpyxl", dtype=object)
         )
     except (BadZipFile, OSError, ValueError, TypeError, UnicodeDecodeError) as exc:
         raise FileProcessingError("El archivo no se puede leer.") from exc
