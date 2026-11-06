@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { getDashboardRecords } from './api';
 
 const PAGE_SIZE = 50;
@@ -14,12 +15,13 @@ function getFlightDate(record) {
 }
 
 function exportCsv(records) {
-  const headers = ['Archivo', 'Fila Excel', 'RUT', 'Nombre', 'Fecha vuelo', 'Estado', 'Cargador responsable', 'Procesamiento'];
+  const headers = ['Archivo', 'Fila Excel', 'RUT', 'Nombre', 'Faena', 'Fecha vuelo', 'Estado', 'Cargador responsable', 'Procesamiento'];
   const rows = records.map((record) => [
     record.nombre_archivo_origen,
     record.fila_origen,
-    record.datos.rut,
-    record.datos.nombre_completo,
+    record.datos?.rut || '—',
+    record.datos?.nombre_completo || '—',
+    record.datos?.faena || '—',
     getFlightDate(record),
     record.estado_validacion,
     record.cargador_responsable,
@@ -35,8 +37,20 @@ function exportCsv(records) {
   URL.revokeObjectURL(url);
 }
 
-export default function DashboardView({ faena }) {
-  const [filters, setFilters] = useState({ from: '', to: '', faena, centro_costo: '', estado: '', page: 1, page_size: PAGE_SIZE });
+export default function DashboardView({ faena: propFaena }) {
+  const outlet = useOutletContext();
+  const contextFaena = outlet?.faena;
+  const activeFaena = contextFaena !== undefined ? contextFaena : (propFaena || '');
+
+  const [filters, setFilters] = useState({
+    from: '',
+    to: '',
+    faena: activeFaena,
+    centro_costo: '',
+    estado: '',
+    page: 1,
+    page_size: PAGE_SIZE,
+  });
   const [result, setResult] = useState({ results: [], pagination: { total: 0, pages: 0 } });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -55,10 +69,10 @@ export default function DashboardView({ faena }) {
   };
 
   useEffect(() => {
-    const nextFilters = { ...filters, faena, page: 1 };
+    const nextFilters = { ...filters, faena: activeFaena, page: 1 };
     setFilters(nextFilters);
     loadRecords(nextFilters);
-  }, [faena]);
+  }, [activeFaena]);
 
   const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value, page: 1 }));
 
@@ -75,29 +89,47 @@ export default function DashboardView({ faena }) {
         <label className="text-xs text-slate-400">Centro de costo<input value={filters.centro_costo} onChange={(e) => updateFilter('centro_costo', e.target.value)} className="input-dark" /></label>
         <label className="text-xs text-slate-400">Estado<select value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="input-dark"><option value="">Todos</option><option value="APROBADO">Aprobado</option><option value="RECHAZADO">Rechazado</option></select></label>
         <div className="flex gap-2 items-end md:col-span-4">
-          <button onClick={() => loadRecords()} className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg">Aplicar filtros</button>
-          <button onClick={() => exportCsv(result.results)} disabled={!result.results.length} className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg disabled:opacity-40">Exportar CSV</button>
+          <button onClick={() => loadRecords(filters)} className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-500 transition-colors">Aplicar filtros</button>
+          <button onClick={() => exportCsv(result.results)} disabled={!result.results.length} className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-40">Exportar CSV</button>
         </div>
       </div>
       {error && <p className="p-3 bg-rose-950/40 border border-rose-900 rounded-lg text-xs text-rose-300">{error}</p>}
-      <div className="border border-slate-800 rounded-xl overflow-hidden">
+      <div className="border border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-black/20">
         {loading ? <p className="p-6 text-sm text-slate-400">Cargando registros...</p> : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900 text-slate-400 uppercase"><tr><th className="p-3">Archivo</th><th className="p-3">Fila</th><th className="p-3">RUT</th><th className="p-3">Nombre</th><th className="p-3">Faena</th><th className="p-3">Fecha vuelo</th><th className="p-3">Estado</th><th className="p-3">Cargador</th><th className="p-3">Procesamiento</th></tr></thead>
+              <thead className="bg-slate-900 text-slate-400 uppercase tracking-wider"><tr><th className="p-3 font-medium">Archivo</th><th className="p-3 font-medium">Fila</th><th className="p-3 font-medium">RUT</th><th className="p-3 font-medium">Nombre</th><th className="p-3 font-medium">Faena</th><th className="p-3 font-medium">Fecha vuelo</th><th className="p-3 font-medium">Estado</th><th className="p-3 font-medium">Cargador</th><th className="p-3 font-medium">Procesamiento</th></tr></thead>
               <tbody className="divide-y divide-slate-800">
                 {result.results.map((record) => (
-                  <tr key={record.id}><td className="p-3">{record.nombre_archivo_origen}</td><td className="p-3">{record.fila_origen}</td><td className="p-3">{record.datos.rut || '—'}</td><td className="p-3">{record.datos.nombre_completo || '—'}</td><td className="p-3">{record.datos.faena || '—'}</td><td className="p-3">{getFlightDate(record)}</td><td className="p-3">{record.estado_validacion}</td><td className="p-3">{record.cargador_responsable}</td><td className="p-3">{new Date(record.fecha_procesamiento).toLocaleString('es-CL')}</td></tr>
+                  <tr key={record.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3">{record.nombre_archivo_origen}</td>
+                    <td className="p-3 font-mono">#{record.fila_origen}</td>
+                    <td className="p-3 font-mono">{record.datos?.rut || '—'}</td>
+                    <td className="p-3 font-medium text-slate-200">{record.datos?.nombre_completo || '—'}</td>
+                    <td className="p-3">{record.datos?.faena || '—'}</td>
+                    <td className="p-3">{getFlightDate(record)}</td>
+                    <td className="p-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${record.estado_validacion === 'APROBADO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                        {record.estado_validacion}
+                      </span>
+                    </td>
+                    <td className="p-3">{record.cargador_responsable}</td>
+                    <td className="p-3 text-slate-400">{new Date(record.fecha_procesamiento).toLocaleString('es-CL')}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>
-            {!result.results.length && <p className="p-6 text-sm text-slate-400">No hay registros para los filtros seleccionados.</p>}
+            {!result.results.length && <p className="p-6 text-sm text-slate-400 text-center">No hay registros para los filtros seleccionados.</p>}
           </div>
         )}
       </div>
-      <div className="flex justify-between items-center text-xs text-slate-400">
-        <span>{result.pagination.total || 0} registros</span>
-        <div className="space-x-2"><button disabled={filters.page <= 1} onClick={() => { const next = { ...filters, page: filters.page - 1 }; setFilters(next); loadRecords(next); }} className="px-3 py-1 bg-slate-800 rounded disabled:opacity-40">Anterior</button><span>Página {filters.page}</span><button disabled={filters.page >= (result.pagination.pages || 1)} onClick={() => { const next = { ...filters, page: filters.page + 1 }; setFilters(next); loadRecords(next); }} className="px-3 py-1 bg-slate-800 rounded disabled:opacity-40">Siguiente</button></div>
+      <div className="flex justify-between items-center text-xs text-slate-400 pt-2">
+        <span>Total: <strong className="text-slate-200">{result.pagination.total || 0}</strong> registros</span>
+        <div className="flex items-center space-x-3">
+          <button disabled={filters.page <= 1} onClick={() => { const next = { ...filters, page: filters.page - 1 }; setFilters(next); loadRecords(next); }} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded transition-colors disabled:opacity-40">Anterior</button>
+          <span className="font-medium text-slate-300">Página {filters.page} de {result.pagination.pages || 1}</span>
+          <button disabled={filters.page >= (result.pagination.pages || 1)} onClick={() => { const next = { ...filters, page: filters.page + 1 }; setFilters(next); loadRecords(next); }} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded transition-colors disabled:opacity-40">Siguiente</button>
+        </div>
       </div>
     </section>
   );

@@ -14,7 +14,7 @@ def _plain_payload(payload):
 
 
 def get_dashboard_records(filters):
-    records = RegistroViaje.objects.select_related("lote").all()
+    records = RegistroViaje.objects.select_related("lote", "cargador").all()
     start_date = filters.get("from")
     end_date = filters.get("to")
     operation = filters.get("faena")
@@ -27,12 +27,7 @@ def get_dashboard_records(filters):
     if filters.get("estado"):
         records = records.filter(estado_validacion=filters["estado"])
     if operation:
-        records = [
-            record
-            for record in records
-            if str(record.payload_datos.get("faena", "")).casefold()
-            == operation.casefold()
-        ]
+        records = records.filter(payload_datos__faena__iexact=operation)
     if cost_center:
         records = [
             record

@@ -205,9 +205,13 @@ de procesamiento y el cargador responsable. El filtro `estado` solo acepta
 `APROBADO` o `RECHAZADO`; otros valores devuelven `400` con el error
 `INVALID_FILTER`.
 
-El frontend permite filtrar por faena, rango de fechas, centro de costo y
-estado (`APROBADO` o `RECHAZADO`). También permite exportar a CSV (UTF-8 BOM)
-los registros actualmente renderizados en la página, sin enviar datos
+El frontend se sincroniza reactivamente con el selector global de `faena`
+del encabezado (`useOutletContext`), permite filtrar por faena, rango de
+fechas, centro de costo y estado (`APROBADO` o `RECHAZADO`). La consulta
+backend optimiza el acceso con `select_related('lote', 'cargador')` para
+evitar consultas N+1 y aplica filtrado directo de `faena` a nivel de base de
+datos (`JSONField`). También permite exportar a CSV (UTF-8 BOM) los registros
+renderizados en pantalla incluyendo la columna Faena, sin enviar datos
 adicionales al servidor ni persistir el archivo exportado.
 
 ## Alcance MVP aprobado y decisiones funcionales
