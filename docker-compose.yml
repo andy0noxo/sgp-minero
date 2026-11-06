@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-sgp_minero_db}
       POSTGRES_USER: ${DB_USER:-usuario_local}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password_seguro_local}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD debe estar definido en el archivo .env}
     ports:
       - "5432:5432"
     volumes:
@@ -23,8 +23,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-dev-only-change-me-use-a-real-secret}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-${DEBUG:-True}}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-${SECRET_KEY:-}}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
       DJANGO_COOKIE_SECURE: ${DJANGO_COOKIE_SECURE:-False}
       REFRESH_TOKEN_COOKIE_SAMESITE: ${REFRESH_TOKEN_COOKIE_SAMESITE:-Strict}
@@ -43,10 +43,10 @@ services:
       DEMO_CONSULTOR_PASSWORD: ${DEMO_CONSULTOR_PASSWORD:-}
       DB_NAME: ${DB_NAME:-sgp_minero_db}
       DB_USER: ${DB_USER:-usuario_local}
-      DB_PASSWORD: ${DB_PASSWORD:-password_seguro_local}
+      DB_PASSWORD: ${DB_PASSWORD:-}
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: ${DB_PORT:-5432}
-      AES_SECRET_KEY: ${AES_SECRET_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-${AES_ENCRYPTION_KEY:-}}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
       db:

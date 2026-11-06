@@ -58,20 +58,20 @@ un superusuario con rol `Administrador`, un usuario `Cargador` y un usuario
 `Consultor`. Las contraseñas se leen desde `.env` y no se cambian si los
 usuarios ya existen.
 
-El `.env.example` contiene valores de demostración locales:
+El `.env.example` declara la estructura de variables de demostración locales con las contraseñas vacías para que cada desarrollador defina las suyas en `.env`:
 
 ```env
 SEED_DEMO_DATA=True
 SEED_DEMO_MASTER_DATA=True
 DJANGO_SUPERUSER_RUT=11111111-1
 DJANGO_SUPERUSER_EMAIL=admin@minera.local
-DJANGO_SUPERUSER_PASSWORD=cambiar-superuser-local
+DJANGO_SUPERUSER_PASSWORD=
 DEMO_CARGADOR_RUT=22222222-2
 DEMO_CARGADOR_EMAIL=cargador@minera.local
-DEMO_CARGADOR_PASSWORD=cambiar-cargador-local
+DEMO_CARGADOR_PASSWORD=
 DEMO_CONSULTOR_RUT=33333333-3
 DEMO_CONSULTOR_EMAIL=consultor@minera.local
-DEMO_CONSULTOR_PASSWORD=cambiar-consultor-local
+DEMO_CONSULTOR_PASSWORD=
 ```
 
 El seed solo puede ejecutarse con `DJANGO_DEBUG=True`. En producción se debe

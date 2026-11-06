@@ -1,7 +1,9 @@
 from io import BytesIO
 
 import pandas as pd
+from config.settings import require_env_secret
 from cryptography.fernet import Fernet
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 
@@ -61,3 +63,42 @@ class ServiceTests(TestCase):
         invalid = SimpleUploadedFile("nomina.txt", b"content")
         with self.assertRaises(FileProcessingError):
             read_headers(invalid)
+
+    def test_require_env_secret_fails_when_missing_or_empty(self):
+        def fake_env(key, default=""):
+            return "   "
+
+        with self.assertRaises(ImproperlyConfigured):
+            require_env_secret(
+                "AES_SECRET_KEY",
+                alias_key="AES_ENCRYPTION_KEY",
+                environ_reader=fake_env,
+            )
+
+    def test_require_env_secret_supports_official_alias_and_validates_fernet(self):
+        valid_key = Fernet.generate_key().decode()
+        store = {"AES_ENCRYPTION_KEY": valid_key}
+
+        def fake_env(key, default=""):
+            return store.get(key, default)
+
+        resolved = require_env_secret(
+            "AES_SECRET_KEY",
+            alias_key="AES_ENCRYPTION_KEY",
+            validate_fernet=True,
+            environ_reader=fake_env,
+        )
+        self.assertEqual(resolved, valid_key)
+
+        invalid_store = {"AES_SECRET_KEY": "llave-invalida-no-base64"}
+
+        def invalid_env(key, default=""):
+            return invalid_store.get(key, default)
+
+        with self.assertRaises(ImproperlyConfigured):
+            require_env_secret(
+                "AES_SECRET_KEY",
+                alias_key="AES_ENCRYPTION_KEY",
+                validate_fernet=True,
+                environ_reader=invalid_env,
+            )

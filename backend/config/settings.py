@@ -14,15 +14,46 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from cryptography.fernet import Fernet
+from django.core.exceptions import ImproperlyConfigured
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
+    DEBUG=(bool, False),
     DJANGO_ALLOWED_HOSTS=(list, []),
     CORS_ALLOWED_ORIGINS=(list, []),
     DJANGO_COOKIE_SECURE=(bool, False),
     REFRESH_TOKEN_COOKIE_SAMESITE=(str, "Strict"),
 )
 environ.Env.read_env(Path(__file__).resolve().parent.parent.parent / ".env")
+
+
+def require_env_secret(
+    primary_key: str,
+    alias_key: str | None = None,
+    validate_fernet: bool = False,
+    environ_reader=env,
+) -> str:
+    """Lee una variable crítica desde el entorno y falla si falta o es inválida."""
+    value = str(environ_reader(primary_key, default="") or "").strip()
+    if not value and alias_key:
+        value = str(environ_reader(alias_key, default="") or "").strip()
+    if not value:
+        alias_hint = f" (o '{alias_key}')" if alias_key else ""
+        raise ImproperlyConfigured(
+            f"La variable de entorno crítica '{primary_key}'{alias_hint} "
+            "es obligatoria y no puede estar vacía."
+        )
+    if validate_fernet:
+        try:
+            Fernet(value.encode())
+        except (TypeError, ValueError) as exc:
+            raise ImproperlyConfigured(
+                f"La llave criptográfica '{primary_key}' debe ser una llave "
+                "Fernet válida de 32 bytes codificados en Base64 URL-safe."
+            ) from exc
+    return value
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,10 +63,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env("DJANGO_SECRET_KEY")
-DEBUG = env("DJANGO_DEBUG")
+SECRET_KEY = require_env_secret("DJANGO_SECRET_KEY", alias_key="SECRET_KEY")
+DEBUG = env.bool("DJANGO_DEBUG", default=env.bool("DEBUG", default=False))
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
-AES_SECRET_KEY = env("AES_SECRET_KEY")
+AES_SECRET_KEY = require_env_secret(
+    "AES_SECRET_KEY",
+    alias_key="AES_ENCRYPTION_KEY",
+    validate_fernet=True,
+)
 
 
 # Application definition
@@ -86,13 +121,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+_DATABASE_URL = str(env("DATABASE_URL", default="") or "").strip()
 DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default=(
-            f"postgres://{env('DB_USER')}:{env('DB_PASSWORD')}"
+    "default": (
+        env.db("DATABASE_URL")
+        if _DATABASE_URL
+        else env.db_url_config(
+            f"postgres://{env('DB_USER')}:{require_env_secret('DB_PASSWORD')}"
             f"@{env('DB_HOST')}:{env('DB_PORT')}/{env('DB_NAME')}"
-        ),
+        )
     )
 }
 

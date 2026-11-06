@@ -36,7 +36,7 @@ El proyecto opera bajo una arquitectura de servicios contenerizados desacoplados
 * SimpleJWT & Argon2 (`argon2-cffi`) (Autenticación JWT y hashing resistente a GPU)  
 * Pandas & Openpyxl (Motor de ingesta y lectura de Excel y CSV)  
 * Cryptography (Módulo `Fernet` `AES-128-CBC + HMAC-SHA256` para cifrado PII)  
-* Gunicorn, Pytest, Flake8 & Black (Servidor WSGI de producción, suite de **34 pruebas automatizadas** y linters/formateadores contenerizados)
+* Gunicorn, Pytest, Flake8 & Black (Servidor WSGI de producción, suite de **36 pruebas automatizadas** y linters/formateadores contenerizados)
 
 **Base de Datos & DevSecOps:**
 
@@ -85,10 +85,11 @@ Set-Location .\sgp-minero
 Copy-Item .env.example .env
 ```
 
-Abre el archivo `.env` generado y reemplaza los valores de ejemplo de
-`DJANGO_SECRET_KEY` y `AES_SECRET_KEY`. Ambas claves se configuran únicamente
-en `.env`; no deben escribirse en `settings.py`, en el frontend ni en otro
-archivo versionado.
+Abre el archivo `.env` generado y completa las variables sensibles que vienen
+vacías en la plantilla (`DB_PASSWORD`, `DJANGO_SECRET_KEY` y `AES_SECRET_KEY`).
+Todas las claves se configuran únicamente en `.env` (o mediante los alias
+`SECRET_KEY` y `AES_ENCRYPTION_KEY`); no deben escribirse en `settings.py`, en
+el frontend ni en otro archivo versionado.
 
 `DJANGO_SECRET_KEY` es la clave interna de firma de Django. Debe ser aleatoria,
 privada y suficientemente larga; para este proyecto se recomienda generar al
