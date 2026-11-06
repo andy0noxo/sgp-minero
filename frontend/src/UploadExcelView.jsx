@@ -144,9 +144,10 @@ export default function UploadExcelView({ role }) {
   }, [isAdmin, faena]);
 
   const updateMasterFilter = (key, value) => {
-    const next = { ...masterFilters, [key]: value, page: 1 };
+    const nextPage = key === 'page' ? Number(value) : 1;
+    const next = { ...masterFilters, [key]: value, page: nextPage };
     setMasterFilters(next);
-    loadMasterPeople({ ...next, faena });
+    loadMasterPeople({ ...next, faena, page: nextPage });
   };
 
   const isMappingComplete = Boolean(mapping.map_rut && mapping.map_nombre);
@@ -386,25 +387,64 @@ export default function UploadExcelView({ role }) {
         </>
       )}
 
-      {/* SGP-22: Tabla Estructurada de Retroalimentación */}
+      {/* SGP-22 y SGP-23: Tabla Estructurada de Retroalimentación */}
       {result && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="col-span-2 md:col-span-2 p-5 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col justify-center">
-              <p className="text-sm text-slate-400 font-medium">Estado del lote</p>
-              <p className={`text-lg font-bold ${result.total_errores > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {result.total_errores > 0 ? 'Procesamiento Parcial' : 'Procesamiento Completado'}
-              </p>
+          {isAdmin ? (
+            <>
+              {/* BUG-01 / SGP-23: Alerta explícita con el desglose de creados y actualizados */}
+              <div
+                role="status"
+                className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 text-xs text-emerald-300"
+              >
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                <span>
+                  <strong>Sincronización de nómina:</strong> {result.total_creados ?? 0} registros creados y {result.total_actualizados ?? 0} registros actualizados{result.total_errores > 0 ? ` (${result.total_errores} rechazados)` : ''}.
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="col-span-2 md:col-span-1 p-5 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col justify-center">
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Estado</p>
+                  <p className={`text-base font-bold mt-1 ${result.total_errores > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {result.total_errores > 0 ? 'Sincronización Parcial' : 'Sincronización Completada'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Total: {result.total_filas ?? ((result.total_creados ?? 0) + (result.total_actualizados ?? 0) + (result.total_errores ?? 0))} filas
+                  </p>
+                </div>
+                <div className="p-5 bg-emerald-950/20 border border-emerald-900/50 rounded-xl text-center">
+                  <p className="text-3xl font-black text-emerald-500">{result.total_creados ?? 0}</p>
+                  <p className="text-[10px] text-emerald-400/80 uppercase tracking-widest mt-1">Nuevos Creados</p>
+                </div>
+                <div className="p-5 bg-sky-950/20 border border-sky-900/50 rounded-xl text-center">
+                  <p className="text-3xl font-black text-sky-400">{result.total_actualizados ?? 0}</p>
+                  <p className="text-[10px] text-sky-400/80 uppercase tracking-widest mt-1">Actualizados</p>
+                </div>
+                <div className="p-5 bg-rose-950/20 border border-rose-900/50 rounded-xl text-center">
+                  <p className="text-3xl font-black text-rose-500">{result.total_errores ?? 0}</p>
+                  <p className="text-[10px] text-rose-400/80 uppercase tracking-widest mt-1">Rechazados</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="col-span-2 md:col-span-2 p-5 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col justify-center">
+                <p className="text-sm text-slate-400 font-medium">Estado del lote</p>
+                <p className={`text-lg font-bold ${result.total_errores > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {result.total_errores > 0 ? 'Procesamiento Parcial' : 'Procesamiento Completado'}
+                </p>
+              </div>
+              <div className="p-5 bg-emerald-950/20 border border-emerald-900/50 rounded-xl text-center">
+                <p className="text-3xl font-black text-emerald-500">{result.total_procesados ?? 0}</p>
+                <p className="text-[10px] text-emerald-400/80 uppercase tracking-widest mt-1">Cargas Exitosas</p>
+              </div>
+              <div className="p-5 bg-rose-950/20 border border-rose-900/50 rounded-xl text-center">
+                <p className="text-3xl font-black text-rose-500">{result.total_errores ?? 0}</p>
+                <p className="text-[10px] text-rose-400/80 uppercase tracking-widest mt-1">Rechazados</p>
+              </div>
             </div>
-            <div className="p-5 bg-emerald-950/20 border border-emerald-900/50 rounded-xl text-center">
-              <p className="text-3xl font-black text-emerald-500">{result.total_procesados ?? result.total_creados ?? 0}</p>
-              <p className="text-[10px] text-emerald-400/80 uppercase tracking-widest mt-1">Cargas Exitosas</p>
-            </div>
-            <div className="p-5 bg-rose-950/20 border border-rose-900/50 rounded-xl text-center">
-              <p className="text-3xl font-black text-rose-500">{result.total_errores ?? 0}</p>
-              <p className="text-[10px] text-rose-400/80 uppercase tracking-widest mt-1">Rechazados</p>
-            </div>
-          </div>
+          )}
 
           {result.detalle_errores?.length > 0 && (
             <div className="border border-rose-900/30 rounded-xl overflow-hidden shadow-lg shadow-rose-950/20">

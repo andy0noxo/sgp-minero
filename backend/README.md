@@ -177,12 +177,15 @@ El rol `Administrador` puede sincronizar `Maestro_Personas` mediante
 obligatorias son `rut`, `nombre_completo`, `faena` y `centro_costo`;
 `estado_habilitacion` es opcional y por defecto queda activa. La respuesta
 informa registros creados, actualizados y rechazados, y devuelve `207` si el
-resultado es parcial. La operación queda registrada en `RegistroAuditoria`
+resultado es parcial. En la interfaz web, el Administrador visualiza una alerta
+y tarjetas KPI con el desglose exacto de registros creados y actualizados. La
+operación queda registrada en `RegistroAuditoria`
 (`IMPORTAR_MAESTRO_PERSONAS`).
 
 También puede consultar la tabla mediante `GET /api/v1/master-persons/`. La
 respuesta es paginada y admite `faena`, `search`, `estado`, `page` y
-`page_size`. El frontend muestra este listado debajo del cargador masivo.
+`page_size`. El frontend muestra este listado interactivo con navegación
+paginada (`updateMasterFilter`) debajo del cargador masivo.
 
 ## Dashboard del Consultor
 
