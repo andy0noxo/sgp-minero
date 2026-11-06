@@ -61,3 +61,8 @@ docker-compose.override.yml
 pgdata/
 postgres-data/
 *.sql.gz
+
+# ==========================================
+# DOCUMENTACIÓN DE CONTEXTO Y BORRADORES INTERNOS
+# ==========================================
+docs/

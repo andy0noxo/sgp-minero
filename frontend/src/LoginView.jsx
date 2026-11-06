@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login, setAccessToken } from './api';
+import { getUserFromToken, login, setAccessToken } from './api';
 
 export default function LoginView({ onLoginSuccess }) {
   const [identifier, setIdentifier] = useState('');
@@ -26,7 +26,7 @@ export default function LoginView({ onLoginSuccess }) {
     try {
       const { data } = await login(identifier.trim(), password);
       setAccessToken(data.access);
-      if (onLoginSuccess) onLoginSuccess(data.user);
+      if (onLoginSuccess) onLoginSuccess(getUserFromToken(data.access, data.user));
     } catch (error) {
       setToast({
         title: error.status === 401 ? 'Error de autenticación' : 'Error de conexión',

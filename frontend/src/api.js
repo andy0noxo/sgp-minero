@@ -10,6 +10,31 @@ export function clearAccessToken() {
   accessToken = null;
 }
 
+export function decodeJwtPayload(token = accessToken) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+export function getUserFromToken(token = accessToken, fallbackUser = null) {
+  const claims = decodeJwtPayload(token);
+  if (!claims) return fallbackUser;
+  return {
+    ...fallbackUser,
+    id: fallbackUser?.id || claims.user_id,
+    rut: fallbackUser?.rut || claims.rut,
+    email_corporativo: fallbackUser?.email_corporativo || claims.email,
+    role: claims.role || fallbackUser?.role || null,
+  };
+}
+
 async function request(path, options = {}, canRefresh = true) {
   const headers = new Headers(options.headers);
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);

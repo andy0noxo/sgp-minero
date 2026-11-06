@@ -5,8 +5,17 @@ import MainLayout from './MainLayout';
 import UploadExcelView from './UploadExcelView';
 import DashboardView from './DashboardView';
 import UploadsHistoryView from './UploadsHistoryView';
+import UsersView from './UsersView';
+import AuditView from './AuditView';
 import ProtectedRoute from './ProtectedRoute';
-import { clearAccessToken, getCurrentUser, logout, refreshToken, setAccessToken } from './api';
+import {
+  clearAccessToken,
+  getCurrentUser,
+  getUserFromToken,
+  logout,
+  refreshToken,
+  setAccessToken,
+} from './api';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -16,9 +25,15 @@ function App() {
     refreshToken()
       .then(({ data }) => {
         setAccessToken(data.access);
-        return getCurrentUser();
+        const decoded = getUserFromToken(data.access);
+        if (decoded?.role) {
+          setUser(decoded);
+        }
+        return getCurrentUser().then((res) =>
+          getUserFromToken(data.access, res.data)
+        );
       })
-      .then(({ data }) => setUser(data))
+      .then((resolvedUser) => setUser(resolvedUser))
       .catch(() => clearAccessToken())
       .finally(() => setIsLoading(false));
   }, []);
@@ -63,6 +78,24 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute user={user} allowedRoles={['Consultor']}>
               <DashboardView />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/usuarios" element={
+            <ProtectedRoute user={user} allowedRoles={['Administrador']}>
+              <UsersView />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin-panel" element={
+            <ProtectedRoute user={user} allowedRoles={['Administrador']}>
+              <UsersView />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/auditoria" element={
+            <ProtectedRoute user={user} allowedRoles={['Administrador', 'Consultor']}>
+              <AuditView />
             </ProtectedRoute>
           } />
 

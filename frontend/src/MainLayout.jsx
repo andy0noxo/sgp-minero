@@ -9,6 +9,8 @@ const MainLayout = ({ user, onLogout }) => {
     { id: '/dashboard', label: 'Panel de Control', icon: '📊', roles: ['Consultor'] },
     { id: '/carga', label: user?.role === 'Administrador' ? 'Mantenedor de Personas' : 'Carga Masiva (Excel)', icon: '📁', roles: ['Administrador', 'Cargador'] },
     { id: '/historial', label: 'Mis Cargas', icon: '🧾', roles: ['Cargador'] },
+    { id: '/usuarios', label: 'Gestión de Usuarios', icon: '👥', roles: ['Administrador'] },
+    { id: '/auditoria', label: 'Auditoría Operativa', icon: '🛡️', roles: ['Administrador', 'Consultor'] },
   ];
 
   const filteredMenu = navigationItems.filter(item => item.roles.includes(user?.role));

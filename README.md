@@ -205,30 +205,30 @@ En desarrollo, el arranque puede crear automáticamente los roles y usuarios
 demo mediante `SEED_DEMO_DATA=True`. El seed es idempotente: puede ejecutarse
 varias veces sin duplicar usuarios ni cambiar sus contraseñas existentes.
 
-El archivo `.env.example` incluye valores locales de demostración. Después de
-copiarlo a `.env`, cambia las contraseñas antes de compartir el entorno:
+El archivo `.env.example` declara los usuarios locales de demostración con las
+contraseñas vacías para que las definas en tu `.env`:
 
 ```env
 SEED_DEMO_DATA=True
 SEED_DEMO_MASTER_DATA=True
 DJANGO_SUPERUSER_RUT=11111111-1
 DJANGO_SUPERUSER_EMAIL=admin@minera.local
-DJANGO_SUPERUSER_PASSWORD=cambiar-superuser-local
+DJANGO_SUPERUSER_PASSWORD=
 DEMO_CARGADOR_RUT=22222222-2
 DEMO_CARGADOR_EMAIL=cargador@minera.local
-DEMO_CARGADOR_PASSWORD=cambiar-cargador-local
+DEMO_CARGADOR_PASSWORD=
 DEMO_CONSULTOR_RUT=33333333-3
 DEMO_CONSULTOR_EMAIL=consultor@minera.local
-DEMO_CONSULTOR_PASSWORD=cambiar-consultor-local
+DEMO_CONSULTOR_PASSWORD=
 ```
 
 Al iniciar el backend local se crean:
 
 | Usuario | Rol | Uso |
 | --- | --- | --- |
-| `admin@minera.local` | Administrador y superusuario | Panel Django (`/admin/`) y Mantenedor de Personas |
-| `cargador@minera.local` | Cargador | Carga Masiva + Mapper UI y Mis Cargas |
-| `consultor@minera.local` | Consultor | Dashboard Corporativo de Auditoría |
+| `admin@minera.local` | Administrador y superusuario | Panel Django (`/admin/`), Mantenedor de Personas (`/carga`), Gestión de Usuarios (`/usuarios`) y Auditoría (`/auditoria`) |
+| `cargador@minera.local` | Cargador | Carga Masiva + Mapper UI (`/carga`) y Mis Cargas (`/historial`) |
+| `consultor@minera.local` | Consultor | Dashboard Corporativo (`/dashboard`) y Auditoría Operativa (`/auditoria`) |
 
 Con `SEED_DEMO_MASTER_DATA=True` también se crean 75 personas demo en el
 Mantenedor, distribuidas entre `Faena Cordillera`, `Faena Norte` y
@@ -284,14 +284,21 @@ backend mediante permisos DRF por rol:
 | `/carga` | `Cargador`, `Administrador` | *Carga Masiva + Mapper UI* (`Cargador`) o *Mantenedor Ágil + Directorio Maestro* (`Administrador`) |
 | `/historial` | `Cargador` | *Mis Cargas*: historial paginado y detalle de rechazos de los lotes propios |
 | `/dashboard` | `Consultor` | *Dashboard Corporativo*: consulta de solo lectura, filtros y exportación CSV |
+| `/usuarios` (`/admin-panel`) | `Administrador` | *Gestión de Usuarios y Roles* (`SGP-28` — vista protegida RBAC; conexión API en curso para Sprint 3) |
+| `/auditoria` | `Administrador`, `Consultor` | *Auditoría Operativa* (`SGP-29` — vista protegida RBAC; conexión API en curso para Sprint 3) |
 | `*` | Cualquiera | Redirección automática segura hacia `/` |
 
-Sin sesión, cualquier ruta del frontend muestra el formulario de login. Al
+Si un usuario autenticado intenta acceder manualmente por URL a una ruta que no
+pertenece a su rol (por ejemplo, un `Cargador` navegando a `/dashboard`,
+`/usuarios` o `/admin-panel`), `<ProtectedRoute>` intercepta la navegación y
+renderiza la vista de bloqueo **`Error 403: Acceso Denegado`**. Sin sesión,
+cualquier ruta del frontend redirige al formulario de login. Al
 recargar el navegador, la sesión se restaura silenciosamente mediante la cookie
-`HttpOnly` `sgp_refresh_token` (`POST /api/v1/auth/refresh/` +
-`GET /api/v1/auth/me/`); si no existe o es inválida, el frontend permanece en
-el login. El backend protege las operaciones mediante JWT y devuelve `401` si
-se solicita un endpoint protegido sin autenticación.
+`HttpOnly` `sgp_refresh_token` (`POST /api/v1/auth/refresh/` + decodificación
+en memoria del payload JWT y sincronización con `GET /api/v1/auth/me/`); si no
+existe o es inválida, el frontend permanece en el login. El backend protege las
+operaciones mediante JWT y devuelve `401` si se solicita un endpoint protegido
+sin autenticación.
 
 | Método | URL API | Acceso |
 | --- | --- | --- |
@@ -308,11 +315,12 @@ se solicita un endpoint protegido sin autenticación.
 | `GET` | `/api/v1/master-persons/` | Administrador |
 | `GET` | `/api/v1/dashboard/records/` | Consultor |
 
-El Dashboard (`/dashboard`) es exclusivo del rol Consultor. Actualmente el
-módulo operativo conectado del Administrador en la SPA es Mantenedor de Personas
-(`/carga`), encontrándose planificada para cierre del Sprint 3 la conexión REST
-y de rutas para **Gestión de Usuarios (`/usuarios` — `SGP-28`)** y **Auditoría
-Operativa (`/auditoria` — `SGP-29`)**.
+El Dashboard (`/dashboard`) es exclusivo del rol Consultor. En el frontend ya se
+encuentran protegidas por rol las rutas de **Mantenedor de Personas (`/carga`)**,
+**Gestión de Usuarios (`/usuarios` — `SGP-28`)** y **Auditoría Operativa
+(`/auditoria` — `SGP-29`)**, encontrándose en desarrollo para el cierre del
+Sprint 3 la conexión de `/usuarios` y `/auditoria` con sus respectivos endpoints
+DRF.
 
 Los métodos no definidos para una vista protegida responden `405`, y un usuario
 autenticado con un rol incorrecto recibe `403`. La URL `/admin/` corresponde al
@@ -356,8 +364,8 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
 
 - La aplicación frontend es una SPA React/Vite con enrutamiento cliente
   mediante **`react-router-dom` (`BrowserRouter` + `ProtectedRoute`)** sobre
-  las rutas `/`, `/carga`, `/historial` y `/dashboard`, respaldada por
-  autorización estricta RBAC en el backend.
+  las rutas `/`, `/carga`, `/historial`, `/dashboard`, `/usuarios` (`/admin-panel`)
+  y `/auditoria`, respaldada por autorización estricta RBAC en el backend.
 - Las contraseñas utilizan **`Argon2`** como algoritmo primario de hashing y el
   login bloquea temporalmente la cuenta durante `5` minutos tras `3` intentos
   inválidos consecutivos.
@@ -376,11 +384,11 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
   parte del alcance funcional vigente en desarrollo para Sprint 3: sus modelos
   (`Rol`, `Usuario`, `RegistroAuditoria` con bitácora activa de
   `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`,
-  `PROCESAR_CARGA_VIAJES` e `IMPORTAR_MAESTRO_PERSONAS`) y sus interfaces base
-  (`UsersView.jsx` y `AuditView.jsx`) ya están adelantados en el repositorio,
-  restando exponer sus endpoints DRF (`/api/v1/users/` y `/api/v1/audit-logs/`)
-  y enlazar las rutas protegidas `/usuarios` y `/auditoria` (manteniendo
-  **Django Admin (`/admin/`)** como consola administrativa nativa auxiliar).
+  `PROCESAR_CARGA_VIAJES` e `IMPORTAR_MAESTRO_PERSONAS`), sus interfaces base
+  (`UsersView.jsx` y `AuditView.jsx`) y sus rutas protegidas RBAC (`/usuarios`
+  y `/auditoria`) ya están integrados en el repositorio, restando conectar sus
+  endpoints DRF (`/api/v1/users/` y `/api/v1/audit-logs/`), manteniendo
+  **Django Admin (`/admin/`)** como consola administrativa nativa auxiliar.
 - Por solicitud del Profesor Guía, se encuentra planificada la tarea adicional
   **`US-EXTRA-01 / SGP-30`** para enriquecer visualmente el flujo del `Cargador`
   con comparación visual de encabezados, vista previa de la tabla estandarizada
@@ -395,14 +403,6 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
   `/api/v1/`, autenticación JWT/Argon2, despliegue Gunicorn/Render y cobertura QA.
 - [`database/README.md`](database/README.md): operación de PostgreSQL, volumen
   `pgdata` y detalle de las 6 entidades del esquema híbrido (`JSONB`).
-- [`docs/DOCUMENTACIÓN ÁGIL - FASE 1_ SGP-MINERO.md`](docs/DOCUMENTACIÓN%20ÁGIL%20-%20FASE%201_%20SGP-MINERO.md):
-  documento ágil oficial de Fase 1 actualizado con las decisiones vigentes de
-  ejecución.
-- [`docs/INFORME_REVISION_Y_AVANCE_SGP_MINERO.md`](docs/INFORME_REVISION_Y_AVANCE_SGP_MINERO.md):
-  informe maestro de auditoría técnica por Sprint/Historia y bitácora fechada de
-  progreso.
-- [`docs/Daily Scrum.xlsx`](docs/Daily%20Scrum.xlsx): registro estructurado de
-  Daily Scrum por Sprint (Semanas 5 a 18).
 
 La carpeta [`database`](database/README.md) documenta la operación de
 PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las
@@ -420,6 +420,6 @@ El proyecto es desarrollado por un equipo técnico de 3 desarrolladores Full-Sta
 
 Operamos bajo el marco de trabajo ágil **Scrum** con Sprints iterativos (Sprints 0 al 4):
 
-* **Gestión de Backlog y Ceremonias:** Conservando íntegramente la codificación de Épicas y Tickets definida originalmente para Jira (`SGP-1` al `SGP-27`, `91 SP`, más las ampliaciones trazables `SGP-28` a `SGP-30`, total `109 SP`), el registro formal de ceremonias (*Sprint Planning, Review y Retrospective*) se lleva en un **documento maestro en Word** y el seguimiento diario de **Daily Scrum** en [`docs/Daily Scrum.xlsx`](docs/Daily%20Scrum.xlsx).  
+* **Gestión de Backlog y Ceremonias:** Conservando íntegramente la codificación de Épicas y Tickets definida originalmente para Jira (`SGP-1` al `SGP-27`, `91 SP`, más las ampliaciones trazables `SGP-28` a `SGP-30`, total `109 SP`), el registro formal de ceremonias (*Sprint Planning, Review y Retrospective*) se lleva en un **documento maestro en Word** y el seguimiento diario de **Daily Scrum** en una **planilla estructurada en Excel** por Sprint (Semanas 5 a 18).  
 * **Trazabilidad (Smart Commits):** Todo el desarrollo en este repositorio está estrictamente ligado a los requerimientos del negocio. Cada commit o Pull Request integra el identificador único del ticket del Backlog (ej. `SGP-15: Implementación de validación Módulo 11`).  
 * **Calidad Continua (DoD + CI):** Ningún cambio se consolida en la rama principal (`main`) sin antes ser verificado funcionalmente en contenedores Docker, superar las validaciones automáticas de GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) y aislar todos sus secretos mediante `.env`.
