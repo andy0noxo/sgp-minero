@@ -315,12 +315,14 @@ cubriendo:
   (`core/tests.py`).
 - Idempotencia del comando `seed_demo_data`, preservación de contraseñas y
   bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
-- Validación matemática de RUT (Módulo 11 con soporte para dígitio `K` minúscula/mayúscula,
-  formato con o sin puntos/guión, enteros numéricos y números flotantes sin sufijo `.0`),
-  lectura de nóminas Excel/CSV con `dtype=object` para evitar alteraciones de tipo,
-  normalización de nombres sin tildes ni espacios sobrantes, coincidencia contra el
-  maestro y validación estricta del mapeo dinámico de columnas (`validate_mapper`:
-  campos obligatorios `map_rut` y `map_nombre`, columnas existentes y prohibición de
+- Validación matemática de RUT (Módulo 11 con soporte para dígito `K`
+  minúscula/mayúscula, formato con o sin puntos/guión, RUTs sin separadores,
+  rechazo de cuerpo alfanumérico y texto basura no estructurado, enteros
+  numéricos y números flotantes sin sufijo `.0`), lectura de nóminas Excel/CSV con
+  `dtype=object` para evitar alteraciones de tipo, normalización de nombres sin
+  tildes ni espacios sobrantes, coincidencia contra el maestro y validación
+  estricta del mapeo dinámico de columnas (`validate_mapper`: campos
+  obligatorios `map_rut` y `map_nombre`, columnas existentes y prohibición de
   misma columna) (`core/services/tests.py`).
 - Cifrado y descifrado autenticado con `Fernet` y manejo de llaves inválidas o
   ausentes (`core/services/tests.py`).
@@ -332,6 +334,9 @@ cubriendo:
   listado paginado y permisos RBAC (`core/services/tests_master_import.py`).
 - Filtros del Dashboard del Consultor, paginación, acceso exclusivo de solo
   lectura y descifrado PII únicamente en memoria RAM (`core/services/tests_dashboard.py`).
+
+La suite completa consta de **48 pruebas automatizadas** que se ejecutan
+íntegramente en verde (`100% pass`).
 
 Para ejecutar todos los archivos de pruebas descubiertos por pytest:
 

@@ -12,7 +12,11 @@ from core.services.encryption import decrypt_pii, encrypt_pii
 from core.services.excel_reader import FileProcessingError, read_headers, read_rows
 from core.services.identity_matcher import find_matching_person, normalize_name
 from core.services.mapper import MapperValidationError, validate_mapper
-from core.services.rut_validator import is_valid_rut, validate_rut
+from core.services.rut_validator import (
+    RutValidationError,
+    is_valid_rut,
+    validate_rut,
+)
 
 
 class ServiceTests(TestCase):
@@ -22,11 +26,24 @@ class ServiceTests(TestCase):
     def test_valid_rut_with_spaces_is_normalized(self):
         self.assertEqual(validate_rut("12 345 678-5"), "12345678-5")
 
+    def test_valid_rut_without_separator_and_verifier_k(self):
+        self.assertEqual(validate_rut("10000013K"), "10000013-K")
+
     def test_invalid_rut_with_wrong_verifier(self):
         self.assertFalse(is_valid_rut("12.345.678-6"))
+        with self.assertRaises(RutValidationError):
+            validate_rut("12.345.678-6")
 
     def test_invalid_rut_with_alphanumeric_body(self):
         self.assertFalse(is_valid_rut("12345678-X"))
+        with self.assertRaises(RutValidationError):
+            validate_rut("12345678-X")
+
+    def test_invalid_rut_with_garbage_text(self):
+        self.assertFalse(is_valid_rut("basura_sin_sentido"))
+        self.assertFalse(is_valid_rut("ABCDEF"))
+        with self.assertRaises(RutValidationError):
+            validate_rut("basura_sin_sentido")
 
     def test_valid_rut_with_k_verifier_lowercase(self):
         self.assertEqual(validate_rut("10.000.013-k"), "10000013-K")
