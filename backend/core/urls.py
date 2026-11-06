@@ -13,6 +13,8 @@ from .views import (
     MasterPersonImportView,
     MasterPersonListView,
     DashboardRecordsView,
+    UserListCreateView,
+    UserDetailView,
 )
 
 app_name = "core"
@@ -44,4 +46,6 @@ urlpatterns = [
     path(
         "dashboard/records/", DashboardRecordsView.as_view(), name="dashboard-records"
     ),
+    path("users/", UserListCreateView.as_view(), name="user-list-create"),
+    path("users/<uuid:user_id>/", UserDetailView.as_view(), name="user-detail"),
 ]

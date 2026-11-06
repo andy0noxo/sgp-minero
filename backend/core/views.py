@@ -15,7 +15,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .models import Maestro_Personas, RegistroViaje
 from .authentication import LoginSerializer
 from .permissions import IsAdministrador, IsCargador, IsConsultor
-from .serializers import AuthUserSerializer
+from .serializers import AuthUserSerializer, UserManagementSerializer
 from .services.api_errors import UploadValidationError
 from .services.excel_reader import FileProcessingError, read_headers
 from .services.mapper import MapperValidationError
@@ -23,6 +23,11 @@ from .services.master_person_importer import MasterImportError, import_master_pe
 from .services.travel_processor import process_travel_file
 from .services.dashboard import get_dashboard_records
 from .services.upload_history import get_upload_detail, get_upload_history
+from .services.user_management import (
+    create_user_with_audit,
+    list_users,
+    update_user_with_audit,
+)
 
 
 class LoginView(APIView):
@@ -322,3 +327,50 @@ class DashboardRecordsView(APIView):
         except ValueError as exc:
             raise UploadValidationError("INVALID_FILTER", str(exc)) from exc
         return Response({"data": data}, status=status.HTTP_200_OK)
+
+
+class UserListCreateView(APIView):
+    permission_classes = (IsAdministrador,)
+
+    def get(self, request):
+        filters = {
+            "search": request.query_params.get("search"),
+            "role": request.query_params.get("role") or request.query_params.get("rol"),
+            "estado": request.query_params.get("estado")
+            or request.query_params.get("status"),
+        }
+        data = list_users(filters)
+        serialized_users = UserManagementSerializer(data["users"], many=True).data
+        return Response(
+            {
+                "data": {
+                    "results": serialized_users,
+                    "counts": data["counts"],
+                }
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        new_user = create_user_with_audit(request.data, request.user)
+        return Response(
+            {
+                "data": UserManagementSerializer(new_user).data,
+                "message": "Usuario creado exitosamente.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class UserDetailView(APIView):
+    permission_classes = (IsAdministrador,)
+
+    def patch(self, request, user_id):
+        updated_user = update_user_with_audit(user_id, request.data, request.user)
+        return Response(
+            {
+                "data": UserManagementSerializer(updated_user).data,
+                "message": "Usuario actualizado exitosamente.",
+            },
+            status=status.HTTP_200_OK,
+        )

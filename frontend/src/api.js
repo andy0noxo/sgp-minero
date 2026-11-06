@@ -132,3 +132,27 @@ export function getDashboardRecords(filters = {}) {
   });
   return request(`/dashboard/records/?${params.toString()}`);
 }
+
+export function getUsers(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  return request(`/users/?${params.toString()}`);
+}
+
+export function createUser(userData) {
+  return request('/users/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+}
+
+export function updateUser(userId, data) {
+  return request(`/users/${userId}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}

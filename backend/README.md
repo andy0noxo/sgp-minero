@@ -122,6 +122,9 @@ SEED_DEMO_DATA=False
 | `POST` | `/api/v1/master-persons/import/` | Administrador |
 | `GET` | `/api/v1/master-persons/` | Administrador |
 | `GET` | `/api/v1/dashboard/records/` | Consultor |
+| `GET` | `/api/v1/users/` | Administrador |
+| `POST` | `/api/v1/users/` | Administrador |
+| `PATCH` | `/api/v1/users/<uuid:user_id>/` | Administrador |
 
 Las rutas protegidas responden `401` sin JWT, `403` cuando el usuario
 autenticado no posee el rol requerido y `405` ante métodos HTTP no habilitados.
@@ -204,6 +207,18 @@ resultado incluye el archivo de origen, la fila del Excel, el estado, la fecha
 de procesamiento y el cargador responsable. El filtro `estado` solo acepta
 `APROBADO` o `RECHAZADO`; otros valores devuelven `400` con el error
 `INVALID_FILTER`.
+
+## Gestión administrativa de usuarios y roles (RBAC)
+
+El rol `Administrador` cuenta con control administrativo completo de usuarios mediante:
+
+- `GET /api/v1/users/`: Lista usuarios provisionados con conteos KPI globales (`total`, `admins`, `cargadores`, `consultores`) y admite filtros por búsqueda `search` (RUT o correo) y `role` (`admin`, `cargador`, `consultor`).
+- `POST /api/v1/users/`: Creación de nuevas cuentas. Valida formato y dígito verificador del RUT con Módulo 11, unicidad de correo corporativo, contraseña mínima de 8 caracteres con algoritmo de derivación de claves `Argon2` (`Argon2PasswordHasher`) y sincronización automática con `Maestro_Personas`. Registra el evento `CREAR_USUARIO` en `RegistroAuditoria`. Las respuestas nunca exponen contraseñas ni hashes.
+- `PATCH /api/v1/users/<uuid:user_id>/`: Modificación de rol (`Administrador`, `Cargador`, `Consultor`), estado de activación (`is_active`), faena base y contraseña opcional. Incluye protecciones estrictas de seguridad:
+  - **Protección de auto-desactivación (`CANNOT_DEACTIVATE_SELF`):** Un Administrador no puede suspender su propia cuenta activa.
+  - **Protección de auto-democión (`CANNOT_DEMOTE_SELF`):** Un Administrador no puede degradar su propio rol.
+  - **Protección del último Administrador activo (`LAST_ADMIN_PROTECTION`):** El sistema impide desactivar o degradar al único Administrador disponible.
+  - Toda modificación genera una traza en `RegistroAuditoria` (`ACTUALIZAR_USUARIO`).
 
 El frontend se sincroniza reactivamente con el selector global de `faena`
 del encabezado (`useOutletContext`), permite filtrar por faena, rango de
