@@ -94,7 +94,7 @@ function App() {
           } />
 
           <Route path="/auditoria" element={
-            <ProtectedRoute user={user} allowedRoles={['Administrador', 'Consultor']}>
+            <ProtectedRoute user={user} allowedRoles={['Administrador']}>
               <AuditView />
             </ProtectedRoute>
           } />

@@ -156,3 +156,39 @@ export function updateUser(userId, data) {
     body: JSON.stringify(data),
   });
 }
+
+export function getAuditLogs(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, value);
+    }
+  });
+  return request(`/audit-logs/?${params.toString()}`);
+}
+
+export async function downloadAuditCsv(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, value);
+    }
+  });
+  params.set('export', 'csv');
+  const headers = {};
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+  const response = await fetch(`${API_BASE_URL}/audit-logs/?${params.toString()}`, {
+    method: 'GET',
+    headers,
+  });
+  if (!response.ok) {
+    throw new Error('Error al descargar el archivo CSV de auditoría.');
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `auditoria-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}

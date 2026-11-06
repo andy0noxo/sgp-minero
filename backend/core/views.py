@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import OperationalError, connection
 from django.db.models import Q
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -12,11 +13,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .models import Maestro_Personas, RegistroViaje
+from .models import Maestro_Personas, RegistroAuditoria, RegistroViaje
 from .authentication import LoginSerializer
 from .permissions import IsAdministrador, IsCargador, IsConsultor
-from .serializers import AuthUserSerializer, UserManagementSerializer
+from .serializers import (
+    AuditLogSerializer,
+    AuthUserSerializer,
+    UserManagementSerializer,
+)
 from .services.api_errors import UploadValidationError
+from .services.audit_service import build_audit_csv, list_audit_logs
 from .services.excel_reader import FileProcessingError, read_headers
 from .services.mapper import MapperValidationError
 from .services.master_person_importer import MasterImportError, import_master_people
@@ -371,6 +377,73 @@ class UserDetailView(APIView):
             {
                 "data": UserManagementSerializer(updated_user).data,
                 "message": "Usuario actualizado exitosamente.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AuditLogListView(APIView):
+    permission_classes = (IsAdministrador,)
+
+    def get(self, request):
+        filters = {
+            "search": request.query_params.get("search"),
+            "modulo": (
+                request.query_params.get("modulo") or request.query_params.get("module")
+            ),
+            "resultado": (
+                request.query_params.get("resultado")
+                or request.query_params.get("status")
+            ),
+            "from": (
+                request.query_params.get("from")
+                or request.query_params.get("fecha_desde")
+            ),
+            "to": (
+                request.query_params.get("to")
+                or request.query_params.get("fecha_hasta")
+            ),
+            "page": request.query_params.get("page", 1),
+            "page_size": request.query_params.get("page_size", 25),
+        }
+        is_csv = (
+            request.query_params.get("format") == "csv"
+            or request.query_params.get("export") == "csv"
+        )
+
+        if is_csv:
+            filters["page"] = 1
+            filters["page_size"] = 5000
+            data = list_audit_logs(filters)
+            serialized = AuditLogSerializer(data["results"], many=True).data
+            csv_content = build_audit_csv(serialized)
+
+            RegistroAuditoria.objects.create(
+                usuario=request.user if request.user.is_authenticated else None,
+                accion="EXPORTAR_AUDITORIA",
+                modulo="AUDITORIA",
+                resultado=RegistroAuditoria.Resultado.EXITOSO,
+                metadata={
+                    "total_exportados": len(serialized),
+                    "formato": "CSV",
+                },
+            )
+
+            response = HttpResponse(csv_content, content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = (
+                'attachment; filename="pistas_auditoria.csv"'
+            )
+            return response
+
+        data = list_audit_logs(filters)
+        serialized_logs = AuditLogSerializer(data["results"], many=True).data
+        return Response(
+            {
+                "data": {
+                    "results": serialized_logs,
+                    "pagination": data["pagination"],
+                    "counts": data["counts"],
+                }
             },
             status=status.HTTP_200_OK,
         )

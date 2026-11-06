@@ -15,6 +15,7 @@ from .views import (
     DashboardRecordsView,
     UserListCreateView,
     UserDetailView,
+    AuditLogListView,
 )
 
 app_name = "core"
@@ -48,4 +49,5 @@ urlpatterns = [
     ),
     path("users/", UserListCreateView.as_view(), name="user-list-create"),
     path("users/<uuid:user_id>/", UserDetailView.as_view(), name="user-detail"),
+    path("audit-logs/", AuditLogListView.as_view(), name="audit-log-list"),
 ]

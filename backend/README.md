@@ -125,6 +125,7 @@ SEED_DEMO_DATA=False
 | `GET` | `/api/v1/users/` | Administrador |
 | `POST` | `/api/v1/users/` | Administrador |
 | `PATCH` | `/api/v1/users/<uuid:user_id>/` | Administrador |
+| `GET` | `/api/v1/audit-logs/` | Administrador |
 
 Las rutas protegidas responden `401` sin JWT, `403` cuando el usuario
 autenticado no posee el rol requerido y `405` ante métodos HTTP no habilitados.
@@ -219,6 +220,16 @@ El rol `Administrador` cuenta con control administrativo completo de usuarios me
   - **Protección de auto-democión (`CANNOT_DEMOTE_SELF`):** Un Administrador no puede degradar su propio rol.
   - **Protección del último Administrador activo (`LAST_ADMIN_PROTECTION`):** El sistema impide desactivar o degradar al único Administrador disponible.
   - Toda modificación genera una traza en `RegistroAuditoria` (`ACTUALIZAR_USUARIO`).
+
+## Auditoría operativa y trazabilidad (RegistroAuditoria)
+
+El rol `Administrador` dispone de un endpoint exclusivo y de solo lectura para auditar los eventos operacionales y de seguridad del sistema:
+
+- `GET /api/v1/audit-logs/`: Retorna la lista paginada de eventos registrados en PostgreSQL (`registro_auditoria`), junto con los conteos agregados para las tarjetas KPI de conformidad (`total`, `exitosas`, `fallidos`, `seguridad`, `advertencias`).
+- **Filtros admitidos:** Búsqueda abierta `search` (por usuario, IP, acción, módulo o archivo), filtro por módulo `modulo` (`AUTENTICACION`, `INGESTA`, `MAESTRO_PERSONAS`, `USUARIOS`, `AUDITORIA`), filtro por estado/resultado `resultado` (`EXITOSO`, `FALLIDO` o pills `success`, `warning`, `danger`), rango de fechas `from` y `to` (`YYYY-MM-DD`), y parámetros de paginación `page` y `page_size`.
+- **Exportación CSV certificada:** Al solicitar `export=csv` o `format=csv`, el endpoint genera un archivo descargable con firma de orden de bytes `UTF-8 BOM` (`\ufeff`), campos delimitados por comas entre comillas y cabeceras oficiales. Esta operación registra automáticamente su propia traza inmutable en auditoría (`EXPORTAR_AUDITORIA`).
+- **Protección de solo lectura:** El endpoint rechaza estrictamente cualquier intento de escritura (`POST`, `PUT`, `PATCH`, `DELETE`) con `HTTP 405 Method Not Allowed`.
+- **Privacidad y cumplimiento Ley 19.628:** La auditoría registra identificadores de lote, cantidades, motivos de fallo e IPs, garantizando **cero exposición de datos PII de pasajeros** (nombres sin cifrar o contraseñas).
 
 El frontend se sincroniza reactivamente con el selector global de `faena`
 del encabezado (`useOutletContext`), permite filtrar por faena, rango de
