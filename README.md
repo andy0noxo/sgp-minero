@@ -349,7 +349,9 @@ El login acepta el RUT con o sin separadores:
 El backend normaliza el valor al formato canónico `12345678-5` antes de
 buscar al usuario. El correo corporativo mantiene su comportamiento normal.
 
-El rol Cargador dispone de las opciones **Carga Masiva (Excel)** (`/carga`) y
+El rol Cargador dispone de las opciones **Carga Masiva (Excel)** (`/carga`, con
+zona interactiva *Drag & Drop*, validación en cliente de extensión + MIME
+`.xlsx` y tamaño `<= 10 MB`, alertas flotantes *Toast* y *spinner* de progreso) y
 **Mis Cargas** (`/historial`). Esta última consulta el historial de sus lotes,
 sus totales y el detalle de las filas rechazadas mediante la API protegida; los
 lotes de otros usuarios no se exponen.

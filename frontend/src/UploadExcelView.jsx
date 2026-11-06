@@ -3,6 +3,15 @@ import { useOutletContext } from 'react-router-dom';
 import { getMasterPeople, getUploadHeaders, importMasterPeople, processUpload } from './api';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const CSV_MIMES = new Set(['text/csv', 'application/csv', 'application/vnd.ms-excel']);
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(2)} MB`;
+}
 
 export default function UploadExcelView({ role }) {
   const isAdmin = role === 'Administrador';
@@ -15,30 +24,69 @@ export default function UploadExcelView({ role }) {
   const [mapping, setMapping] = useState({ map_rut: '', map_nombre: '' });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false); // Estado para animar el drag & drop
 
   const [masterData, setMasterData] = useState({ results: [], pagination: { page: 1, pages: 0, total: 0 } });
   const [masterFilters, setMasterFilters] = useState({ search: '', estado: '', page: 1, page_size: 25 });
 
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const rejectFile = (title, message) => {
+    setFile(null);
+    setHeaders([]);
+    setMapping({ map_rut: '', map_nombre: '' });
+    setResult(null);
+    setError(message);
+    setToast({ title, message });
+  };
+
   const selectFile = (candidate) => {
     if (!candidate) return;
-    if (candidate.size > MAX_FILE_SIZE) return setError('El archivo supera el límite de 10 MB.');
-    
-    // Validación estricta por MIME type (SGP-15)
-    const validXLSX = candidate.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || candidate.name.toLowerCase().endsWith('.xlsx');
-    const validCSV = candidate.type === 'text/csv' || candidate.name.toLowerCase().endsWith('.csv');
+
+    if (candidate.size === 0) {
+      return rejectFile('Archivo vacío', 'El archivo seleccionado está vacío (0 bytes).');
+    }
+
+    if (candidate.size > MAX_FILE_SIZE) {
+      return rejectFile(
+        'Límite de tamaño excedido',
+        `El archivo (${formatFileSize(candidate.size)}) supera el límite de 10 MB.`
+      );
+    }
+
+    // Validación estricta de extensión + MIME type en cliente (SGP-15)
+    const lowerName = candidate.name.toLowerCase();
+    const hasXlsxExt = lowerName.endsWith('.xlsx');
+    const hasCsvExt = lowerName.endsWith('.csv');
+    const validXLSX = hasXlsxExt && (!candidate.type || candidate.type === XLSX_MIME);
+    const validCSV = hasCsvExt && (!candidate.type || CSV_MIMES.has(candidate.type));
 
     if (isAdmin) {
-      if (!validXLSX && !validCSV) return setError('Solo se permiten archivos CSV o XLSX estandarizados.');
-    } else {
-      if (!validXLSX) return setError('Solo se permiten planillas Excel (.xlsx).');
+      if (!validXLSX && !validCSV) {
+        return rejectFile(
+          'Formato no permitido',
+          'Solo se permiten archivos CSV o XLSX estandarizados.'
+        );
+      }
+    } else if (!validXLSX) {
+      return rejectFile(
+        'Formato no permitido',
+        'Solo se permiten planillas Excel (.xlsx).'
+      );
     }
-    
-    setFile(candidate); 
-    setHeaders([]); 
-    setResult(null); 
+
+    setFile(candidate);
+    setHeaders([]);
+    setMapping({ map_rut: '', map_nombre: '' });
+    setResult(null);
     setError('');
+    setToast(null);
   };
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -51,24 +99,31 @@ export default function UploadExcelView({ role }) {
     setMapping({ map_rut: '', map_nombre: '' });
     setResult(null);
     setError('');
+    setToast(null);
   };
 
   const readHeaders = async () => {
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setToast(null);
     try {
       const response = await getUploadHeaders(file);
       setHeaders(response.data.headers);
       setMapping({ map_rut: '', map_nombre: '' });
-    } catch (requestError) { setError(requestError.message); } finally { setLoading(false); }
+    } catch (requestError) {
+      setError(requestError.message);
+      setToast({ title: 'Error al leer encabezados', message: requestError.message });
+    } finally { setLoading(false); }
   };
 
   const submit = async () => {
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setToast(null);
     try {
       const response = isAdmin ? await importMasterPeople(file) : await processUpload(file, mapping);
       setResult(response.data);
       if (isAdmin) await loadMasterPeople();
-    } catch (requestError) { setError(requestError.message); } finally { setLoading(false); }
+    } catch (requestError) {
+      setError(requestError.message);
+      setToast({ title: 'Error al procesar archivo', message: requestError.message });
+    } finally { setLoading(false); }
   };
 
   const loadMasterPeople = async (filters = { ...masterFilters, faena }) => {
@@ -94,7 +149,36 @@ export default function UploadExcelView({ role }) {
   };
 
   return (
-    <section className="space-y-6 max-w-5xl mx-auto">
+    <section className="space-y-6 max-w-5xl mx-auto relative">
+      {toast && (
+        <aside
+          role="alert"
+          className="fixed top-6 right-6 z-50 bg-slate-900 border-l-4 border-rose-500 border border-rose-500/30 rounded-xl shadow-2xl p-4 flex items-start gap-3 max-w-sm"
+        >
+          <div className="flex-shrink-0 text-rose-400 mt-0.5">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-xs font-bold text-white">{toast.title}</h4>
+            <p className="text-xs text-rose-200/90 mt-0.5">{toast.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-slate-400 hover:text-white ml-1 text-xs"
+            aria-label="Cerrar alerta"
+          >
+            ✕
+          </button>
+        </aside>
+      )}
+
       <header className="pb-6 border-b border-slate-800">
         <h2 className="text-xl font-bold text-white">{isAdmin ? 'Mantenedor masivo de personas' : 'Carga de nóminas de pasajes'}</h2>
         <p className="text-xs text-slate-400 mt-1">{isAdmin ? 'Sincroniza el maestro de trabajadores mediante CSV o Excel.' : 'Carga una nómina XLSX y mapea sus columnas antes de procesarla.'}</p>
@@ -107,21 +191,87 @@ export default function UploadExcelView({ role }) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop} 
             className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200 ${
-              isDragging ? 'border-amber-500 bg-amber-900/20 scale-[1.01]' : 'border-slate-700 bg-slate-900/30'
+              isDragging
+                ? 'border-amber-500 bg-amber-900/20 scale-[1.01]'
+                : error && !file
+                  ? 'border-rose-500/80 bg-rose-950/20'
+                  : file
+                    ? 'border-emerald-500/50 bg-emerald-950/10'
+                    : 'border-slate-700 bg-slate-900/30'
             }`}
           >
-            <p className="text-sm text-slate-300">Arrastra el archivo aquí o <label className="text-amber-400 underline cursor-pointer">explora<input type="file" accept={isAdmin ? '.csv,.xlsx' : '.xlsx'} onChange={(e) => selectFile(e.target.files[0])} className="hidden" /></label></p>
+            <p className="text-sm text-slate-300">
+              Arrastra el archivo aquí o{' '}
+              <label className="text-amber-400 underline cursor-pointer">
+                explora
+                <input
+                  type="file"
+                  accept={isAdmin ? '.csv,.xlsx' : '.xlsx'}
+                  onChange={(e) => {
+                    selectFile(e.target.files[0]);
+                    e.target.value = '';
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </p>
             <p className="text-xs text-slate-500 mt-2">Máximo 10 MB · {isAdmin ? 'CSV o XLSX' : 'XLSX'}</p>
           </div>
 
           {file && (
-            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl flex justify-between items-center">
-              <span className="text-sm text-white font-medium">{file.name}</span>
-              {!isAdmin && headers.length === 0 && (
-                <button onClick={readHeaders} disabled={loading} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-white rounded-lg transition-colors">
-                  {loading ? 'Leyendo...' : 'Extraer encabezados'}
+            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-wrap justify-between items-center gap-3">
+              <div className="flex items-center gap-3">
+                {loading ? (
+                  <svg
+                    className="w-5 h-5 text-amber-400 animate-spin flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    ✓
+                  </span>
+                )}
+                <div>
+                  <p className="text-sm text-white font-medium">{file.name}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {formatFileSize(file.size)} ·{' '}
+                    {loading
+                      ? 'Procesando en curso...'
+                      : headers.length > 0
+                        ? `${headers.length} columnas detectadas`
+                        : 'Archivo validado y listo'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isAdmin && headers.length === 0 && (
+                  <button
+                    onClick={readHeaders}
+                    disabled={loading}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs text-white rounded-lg transition-colors inline-flex items-center gap-2"
+                  >
+                    {loading && (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                      </svg>
+                    )}
+                    {loading ? 'Leyendo...' : 'Extraer encabezados'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={loading}
+                  className="px-3 py-2 text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  Quitar
                 </button>
-              )}
+              </div>
             </div>
           )}
 
@@ -145,7 +295,13 @@ export default function UploadExcelView({ role }) {
           {error && <p className="p-3 bg-rose-950/40 border border-rose-900 rounded-lg text-xs text-rose-300 flex items-center gap-2">⚠️ {error}</p>}
 
           {file && (isAdmin || (mapping.map_rut && mapping.map_nombre && mapping.map_rut !== mapping.map_nombre)) && (
-            <button onClick={submit} disabled={loading} className="w-full md:w-auto px-6 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20">
+            <button onClick={submit} disabled={loading} className="w-full md:w-auto px-6 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20 inline-flex items-center justify-center gap-2">
+              {loading && (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              )}
               {loading ? 'Procesando validaciones...' : 'Procesar archivo'}
             </button>
           )}
