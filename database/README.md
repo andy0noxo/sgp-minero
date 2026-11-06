@@ -39,7 +39,7 @@ relacional estricta con flexibilidad documental `JSONB`:
 | `Maestro_Personas` | `core_maestro_personas` | `UUID` | Nómina oficial de validación interna: `rut` único indexado, `nombre_completo`, **`faena`** (dimensión operacional obligatoria), `centro_costo` (imputación contable) y `estado_habilitacion`. |
 | `LoteCarga` | `lote_carga` | `UUID` | Cabecera transaccional de cada archivo procesado por un `Cargador` (`PROTECT`), totales de filas y `detalle_errores` (`JSONB` libre de PII). |
 | `RegistroViaje` | `registro_viaje` | `UUID` | Entidad híbrida central asociada a `Usuario` y `LoteCarga` (`PROTECT`), con `fila_origen`, `estado_validacion`, índices compuestos `(fecha_procesamiento, estado_validacion)` y `(cargador, fecha_procesamiento)`, y columna **`payload_datos` (`JSONB`)** donde el RUT y el Nombre se guardan exclusivamente cifrados con `Fernet` (`AES-128-CBC + HMAC-SHA256`), acompañados de la `faena` y las columnas dinámicas del Excel. |
-| `RegistroAuditoria` | `registro_auditoria` | `UUID` | Bitácora inmutable de acciones críticas (`PROCESAR_CARGA_VIAJES`, `IMPORTAR_MAESTRO_PERSONAS`) con `usuario_id` (`SET_NULL`) y `detalles` en `JSONB` sin PII. |
+| `RegistroAuditoria` | `registro_auditoria` | `UUID` | Bitácora inmutable de acciones críticas (`LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`, `PROCESAR_CARGA_VIAJES`, `IMPORTAR_MAESTRO_PERSONAS`) con `usuario_id` (`PROTECT`, `null=True`) y `metadata` en `JSONB` sin PII. |
 
 ## Creación local con Docker
 
@@ -53,10 +53,10 @@ En el primer arranque, PostgreSQL crea automáticamente la base definida por
 `DB_NAME`. El backend espera el healthcheck del servicio `db` (`pg_isready`) y
 ejecuta `python manage.py migrate --noinput` antes de iniciar Django.
 
-La base queda disponible en `localhost:5432` con las credenciales de `.env`.
-Si `.env` todavía no existe, Compose utiliza valores de desarrollo seguros para
-la prueba local. Para un entorno compartido se debe copiar `.env.example` a
-`.env` y reemplazar todas las credenciales y llaves.
+La base queda disponible en `localhost:5432` con las credenciales definidas en
+`.env`. Antes del primer arranque se debe copiar `.env.example` a `.env` y
+completar `DB_PASSWORD`, `DJANGO_SECRET_KEY` y `AES_SECRET_KEY` (ya que
+`docker-compose.yml` y `settings.py` validan su presencia al iniciar).
 
 Comandos de verificación:
 

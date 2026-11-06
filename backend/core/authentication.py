@@ -20,6 +20,15 @@ class AuthenticationApiError(APIException):
         self.detail = {"code": code, "message": message}
 
 
+def _extract_client_ip(request):
+    if request is None:
+        return None
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
 class LoginSerializer(serializers.Serializer):
     identifier = serializers.CharField()
     password = serializers.CharField(write_only=True, trim_whitespace=False)
@@ -27,7 +36,9 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         identifier = attrs.get("identifier", "").strip()
         password = attrs.get("password")
-        from .models import Usuario
+        request = self.context.get("request")
+        client_ip = _extract_client_ip(request)
+        from .models import RegistroAuditoria, Usuario
 
         rut_identifier = identifier
         try:
@@ -47,27 +58,80 @@ class LoginSerializer(serializers.Serializer):
             )
 
             if user is None:
+                RegistroAuditoria.objects.create(
+                    usuario=None,
+                    accion="LOGIN_FALLIDO",
+                    modulo="AUTENTICACION",
+                    resultado=RegistroAuditoria.Resultado.FALLIDO,
+                    metadata={
+                        "motivo": "USUARIO_NO_ENCONTRADO",
+                        "ip": client_ip,
+                    },
+                )
                 authentication_error = {
                     "code": "INVALID_CREDENTIALS",
                     "message": "Credenciales inválidas.",
                 }
             elif user.is_login_locked():
+                RegistroAuditoria.objects.create(
+                    usuario=user,
+                    accion="LOGIN_BLOQUEADO",
+                    modulo="AUTENTICACION",
+                    resultado=RegistroAuditoria.Resultado.FALLIDO,
+                    metadata={
+                        "motivo": "ACCOUNT_LOCKED",
+                        "intentos_fallidos": user.failed_login_attempts,
+                        "locked_until": (
+                            user.locked_until.isoformat() if user.locked_until else None
+                        ),
+                        "ip": client_ip,
+                    },
+                )
                 authentication_error = {
                     "code": "ACCOUNT_LOCKED",
                     "message": "La cuenta está temporalmente bloqueada.",
                 }
             elif not user.is_active:
+                RegistroAuditoria.objects.create(
+                    usuario=user,
+                    accion="LOGIN_FALLIDO",
+                    modulo="AUTENTICACION",
+                    resultado=RegistroAuditoria.Resultado.FALLIDO,
+                    metadata={
+                        "motivo": "INACTIVE_USER",
+                        "ip": client_ip,
+                    },
+                )
                 authentication_error = {
                     "code": "INACTIVE_USER",
                     "message": "El usuario está inactivo.",
                 }
             elif not user.check_password(password):
                 user.failed_login_attempts += 1
-                if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
+                locked_now = (
+                    user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS
+                )
+                if locked_now:
                     user.locked_until = timezone.now() + timedelta(
                         minutes=settings.LOGIN_LOCKOUT_MINUTES
                     )
                 user.save(update_fields=("failed_login_attempts", "locked_until"))
+                RegistroAuditoria.objects.create(
+                    usuario=user,
+                    accion="CUENTA_BLOQUEADA" if locked_now else "LOGIN_FALLIDO",
+                    modulo="AUTENTICACION",
+                    resultado=RegistroAuditoria.Resultado.FALLIDO,
+                    metadata={
+                        "motivo": (
+                            "MAX_INTENTOS_SUPERADOS"
+                            if locked_now
+                            else "INVALID_CREDENTIALS"
+                        ),
+                        "intentos_fallidos": user.failed_login_attempts,
+                        "bloqueada": locked_now,
+                        "ip": client_ip,
+                    },
+                )
                 authentication_error = {
                     "code": "INVALID_CREDENTIALS",
                     "message": "Credenciales inválidas.",
@@ -76,6 +140,16 @@ class LoginSerializer(serializers.Serializer):
                 user.failed_login_attempts = 0
                 user.locked_until = None
                 user.save(update_fields=("failed_login_attempts", "locked_until"))
+                RegistroAuditoria.objects.create(
+                    usuario=user,
+                    accion="LOGIN_EXITOSO",
+                    modulo="AUTENTICACION",
+                    resultado=RegistroAuditoria.Resultado.EXITOSO,
+                    metadata={
+                        "rol": user.rol.nombre_rol if user.rol else None,
+                        "ip": client_ip,
+                    },
+                )
 
         if authentication_error:
             raise AuthenticationApiError(**authentication_error)

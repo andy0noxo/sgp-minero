@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import Maestro_Personas, Rol, Usuario
+from .models import Maestro_Personas, RegistroAuditoria, Rol, Usuario
 
 
 class AuthenticationApiTests(TestCase):
@@ -60,6 +60,63 @@ class AuthenticationApiTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.failed_login_attempts, 3)
         self.assertGreater(self.user.locked_until, timezone.now())
+        audit_actions = list(
+            RegistroAuditoria.objects.filter(usuario=self.user, modulo="AUTENTICACION")
+            .order_by("creado_en")
+            .values_list("accion", flat=True)
+        )
+        self.assertEqual(
+            audit_actions,
+            ["LOGIN_FALLIDO", "LOGIN_FALLIDO", "CUENTA_BLOQUEADA"],
+        )
+
+    @override_settings(MAX_FAILED_LOGIN_ATTEMPTS=3, LOGIN_LOCKOUT_MINUTES=5)
+    def test_login_records_audit_events_for_success_unknown_and_locked_user(self):
+        unknown_res = self.client.post(
+            "/api/v1/auth/login/",
+            {"identifier": "noexiste@minera.cl", "password": "wrong"},
+            format="json",
+        )
+        self.assertEqual(unknown_res.status_code, 401)
+        unknown_log = RegistroAuditoria.objects.filter(
+            usuario__isnull=True, modulo="AUTENTICACION"
+        ).first()
+        self.assertIsNotNone(unknown_log)
+        self.assertEqual(unknown_log.accion, "LOGIN_FALLIDO")
+        self.assertEqual(unknown_log.metadata.get("motivo"), "USUARIO_NO_ENCONTRADO")
+
+        ok_res = self.client.post(
+            "/api/v1/auth/login/",
+            {"identifier": "12345678-5", "password": "correct-password"},
+            format="json",
+        )
+        self.assertEqual(ok_res.status_code, 200)
+        self.assertTrue(
+            RegistroAuditoria.objects.filter(
+                usuario=self.user,
+                modulo="AUTENTICACION",
+                accion="LOGIN_EXITOSO",
+                resultado=RegistroAuditoria.Resultado.EXITOSO,
+            ).exists()
+        )
+
+        self.user.failed_login_attempts = 3
+        self.user.locked_until = timezone.now() + timezone.timedelta(minutes=5)
+        self.user.save(update_fields=("failed_login_attempts", "locked_until"))
+        locked_res = self.client.post(
+            "/api/v1/auth/login/",
+            {"identifier": "12345678-5", "password": "correct-password"},
+            format="json",
+        )
+        self.assertEqual(locked_res.status_code, 401)
+        self.assertTrue(
+            RegistroAuditoria.objects.filter(
+                usuario=self.user,
+                modulo="AUTENTICACION",
+                accion="LOGIN_BLOQUEADO",
+                resultado=RegistroAuditoria.Resultado.FALLIDO,
+            ).exists()
+        )
 
     def test_current_user_requires_authentication(self):
         self.assertEqual(self.client.get("/api/v1/auth/me/").status_code, 401)

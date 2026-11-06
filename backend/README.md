@@ -35,11 +35,13 @@ normaliza el valor al formato canónico antes de consultar al usuario.
 
 Los roles implementados son `Administrador`, `Cargador` y `Consultor`. La
 autorización real se ejecuta en el backend mediante permisos DRF
-(`IsAdministradorRole`, `IsCargadorRole`, `IsConsultorRole`); las restricciones
+(`IsAdministrador`, `IsCargador`, `IsConsultor`); las restricciones
 visuales y rutas del frontend no sustituyen estos permisos. Después de tres
 intentos inválidos consecutivos (`MAX_FAILED_LOGIN_ATTEMPTS=3`), la cuenta se
 bloquea temporalmente durante cinco minutos (`LOGIN_LOCKOUT_MINUTES=5`) de forma
-transaccional (`select_for_update()`). Los errores de API mantienen la
+transaccional (`select_for_update()`), registrando en `RegistroAuditoria`
+(`modulo="AUTENTICACION"`) cada evento (`LOGIN_EXITOSO`, `LOGIN_FALLIDO`,
+`CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`). Los errores de API mantienen la
 estructura:
 
 ```json
@@ -293,15 +295,17 @@ python manage.py check --deploy
 
 ## Cobertura de QA
 
-La suite automatizada actual cuenta con **34 pruebas** distribuidas en 5 módulos
+La suite automatizada actual cuenta con **37 pruebas** distribuidas en 5 módulos
 (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
 `core/services/tests_master_import.py` y `core/services/tests_dashboard.py`) y
 ejecutadas automáticamente en GitHub Actions (`.github/workflows/ci.yml`),
 cubriendo:
 
 - Autenticación JWT, login por correo o RUT en múltiples formatos, renovación y
-  cierre de sesión por cookie `HttpOnly`, bloqueo tras 3 intentos fallidos y
-  control RBAC (`core/tests.py`).
+  cierre de sesión por cookie `HttpOnly`, bloqueo tras 3 intentos fallidos,
+  trazabilidad de eventos en `RegistroAuditoria` (`LOGIN_EXITOSO`,
+  `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`) y control RBAC
+  (`core/tests.py`).
 - Idempotencia del comando `seed_demo_data`, preservación de contraseñas y
   bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
 - Validación matemática de RUT (Módulo 11), normalización de nombres sin tildes

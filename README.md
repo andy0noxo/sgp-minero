@@ -36,7 +36,7 @@ El proyecto opera bajo una arquitectura de servicios contenerizados desacoplados
 * SimpleJWT & Argon2 (`argon2-cffi`) (Autenticación JWT y hashing resistente a GPU)  
 * Pandas & Openpyxl (Motor de ingesta y lectura de Excel y CSV)  
 * Cryptography (Módulo `Fernet` `AES-128-CBC + HMAC-SHA256` para cifrado PII)  
-* Gunicorn, Pytest, Flake8 & Black (Servidor WSGI de producción, suite de **36 pruebas automatizadas** y linters/formateadores contenerizados)
+* Gunicorn, Pytest, Flake8 & Black (Servidor WSGI de producción, suite de **37 pruebas automatizadas** y linters/formateadores contenerizados)
 
 **Base de Datos & DevSecOps:**
 
@@ -375,6 +375,7 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
 - **Gestión de Usuarios (`SGP-28`) y Auditoría Operativa (`SGP-29`)** forman
   parte del alcance funcional vigente en desarrollo para Sprint 3: sus modelos
   (`Rol`, `Usuario`, `RegistroAuditoria` con bitácora activa de
+  `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`,
   `PROCESAR_CARGA_VIAJES` e `IMPORTAR_MAESTRO_PERSONAS`) y sus interfaces base
   (`UsersView.jsx` y `AuditView.jsx`) ya están adelantados en el repositorio,
   restando exponer sus endpoints DRF (`/api/v1/users/` y `/api/v1/audit-logs/`)
