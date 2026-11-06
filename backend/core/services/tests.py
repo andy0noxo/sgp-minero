@@ -11,6 +11,7 @@ from core.models import Maestro_Personas
 from core.services.encryption import decrypt_pii, encrypt_pii
 from core.services.excel_reader import FileProcessingError, read_headers
 from core.services.identity_matcher import find_matching_person, normalize_name
+from core.services.mapper import MapperValidationError, validate_mapper
 from core.services.rut_validator import is_valid_rut, validate_rut
 
 
@@ -102,3 +103,34 @@ class ServiceTests(TestCase):
                 validate_fernet=True,
                 environ_reader=invalid_env,
             )
+
+    def test_validate_mapper_valid_mapping(self):
+        available = ["RUT_COL", "NOMBRE_COL", "OTRA_COL"]
+        mapping = {"map_rut": "RUT_COL", "map_nombre": "NOMBRE_COL"}
+        cleaned = validate_mapper(mapping, available)
+        self.assertEqual(cleaned, {"map_rut": "RUT_COL", "map_nombre": "NOMBRE_COL"})
+
+    def test_validate_mapper_missing_fields_raises_error(self):
+        available = ["RUT_COL", "NOMBRE_COL"]
+        with self.assertRaises(MapperValidationError) as ctx:
+            validate_mapper({"map_rut": "RUT_COL"}, available)
+        self.assertIn("Faltan campos obligatorios", str(ctx.exception))
+
+    def test_validate_mapper_unknown_columns_raises_error(self):
+        available = ["COL_A", "COL_B"]
+        with self.assertRaises(MapperValidationError) as ctx:
+            validate_mapper(
+                {"map_rut": "COL_INEXISTENTE", "map_nombre": "COL_B"}, available
+            )
+        self.assertIn("Las columnas no existen", str(ctx.exception))
+
+    def test_validate_mapper_same_column_raises_error(self):
+        available = ["COL_A", "COL_B"]
+        with self.assertRaises(MapperValidationError) as ctx:
+            validate_mapper({"map_rut": "COL_A", "map_nombre": "COL_A"}, available)
+        self.assertIn("columnas distintas", str(ctx.exception))
+
+    def test_validate_mapper_non_dict_raises_error(self):
+        with self.assertRaises(MapperValidationError) as ctx:
+            validate_mapper("no_es_dict", ["COL_A"])
+        self.assertIn("objeto JSON", str(ctx.exception))

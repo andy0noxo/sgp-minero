@@ -115,6 +115,7 @@ export default function UploadExcelView({ role }) {
   };
 
   const submit = async () => {
+    if (!canSubmit || loading) return;
     setLoading(true); setError(''); setToast(null);
     try {
       const response = isAdmin ? await importMasterPeople(file) : await processUpload(file, mapping);
@@ -147,6 +148,11 @@ export default function UploadExcelView({ role }) {
     setMasterFilters(next);
     loadMasterPeople({ ...next, faena });
   };
+
+  const isMappingComplete = Boolean(mapping.map_rut && mapping.map_nombre);
+  const isSameColumnSelected = Boolean(isMappingComplete && mapping.map_rut === mapping.map_nombre);
+  const isMappingValid = Boolean(isMappingComplete && !isSameColumnSelected);
+  const canSubmit = isAdmin ? Boolean(file) : Boolean(file && headers.length > 0 && isMappingValid);
 
   return (
     <section className="space-y-6 max-w-5xl mx-auto relative">
@@ -276,34 +282,106 @@ export default function UploadExcelView({ role }) {
           )}
 
           {!isAdmin && headers.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-slate-900/60 border border-slate-800 rounded-xl">
-              <label className="text-xs text-slate-400 font-semibold">Columna RUT
-                <select value={mapping.map_rut} onChange={(e) => setMapping({ ...mapping, map_rut: e.target.value })} className="mt-2 w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
-                  <option value="">Seleccionar...</option>
-                  {headers.map((header) => <option key={header}>{header}</option>)}
-                </select>
-              </label>
-              <label className="text-xs text-slate-400 font-semibold">Columna Nombre Completo
-                <select value={mapping.map_nombre} onChange={(e) => setMapping({ ...mapping, map_nombre: e.target.value })} className="mt-2 w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
-                  <option value="">Seleccionar...</option>
-                  {headers.map((header) => <option key={header}>{header}</option>)}
-                </select>
-              </label>
+            <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-4">
+              <div className="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-slate-800">
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Mapeo Dinámico de Columnas
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Empareja las columnas de tu planilla Excel con los atributos obligatorios del sistema.
+                  </p>
+                </div>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isMappingValid
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                      : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  }`}
+                >
+                  {isMappingValid ? 'Mapeo Válido' : '2 campos obligatorios requeridos'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="text-xs text-slate-300 font-semibold">
+                  Columna RUT <span className="text-amber-400">*</span>
+                  <select
+                    value={mapping.map_rut}
+                    onChange={(e) => setMapping({ ...mapping, map_rut: e.target.value })}
+                    className="mt-2 w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="">Seleccionar columna...</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="text-xs text-slate-300 font-semibold">
+                  Columna Nombre Completo <span className="text-amber-400">*</span>
+                  <select
+                    value={mapping.map_nombre}
+                    onChange={(e) => setMapping({ ...mapping, map_nombre: e.target.value })}
+                    className="mt-2 w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="">Seleccionar columna...</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {isSameColumnSelected && (
+                <p className="text-xs text-rose-400 flex items-center gap-1.5 pt-1">
+                  <span>⚠️</span> La columna de RUT y la columna de Nombre Completo no pueden ser la misma ({mapping.map_rut}).
+                </p>
+              )}
+
+              {isMappingValid && (
+                <p className="text-xs text-emerald-400 flex items-center gap-1.5 pt-1">
+                  <span>✓</span> Mapeo preparado: RUT → "{mapping.map_rut}" · Nombre → "{mapping.map_nombre}".
+                </p>
+              )}
             </div>
           )}
 
           {error && <p className="p-3 bg-rose-950/40 border border-rose-900 rounded-lg text-xs text-rose-300 flex items-center gap-2">⚠️ {error}</p>}
 
-          {file && (isAdmin || (mapping.map_rut && mapping.map_nombre && mapping.map_rut !== mapping.map_nombre)) && (
-            <button onClick={submit} disabled={loading} className="w-full md:w-auto px-6 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20 inline-flex items-center justify-center gap-2">
-              {loading && (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
+          {file && (isAdmin || headers.length > 0) && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={submit}
+                disabled={loading || !canSubmit}
+                className={`w-full md:w-auto px-6 py-2.5 text-sm font-bold rounded-lg transition-all shadow-lg inline-flex items-center justify-center gap-2 ${
+                  canSubmit && !loading
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20 cursor-pointer'
+                    : 'bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-60 shadow-none'
+                }`}
+              >
+                {loading && (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                )}
+                {loading ? 'Procesando validaciones...' : 'Procesar archivo'}
+              </button>
+
+              {!isAdmin && headers.length > 0 && !canSubmit && (
+                <span className="text-xs text-slate-400">
+                  {isSameColumnSelected
+                    ? 'Corrige el emparejamiento para habilitar el procesamiento.'
+                    : 'Empareja ambas columnas obligatorias (RUT y Nombre) para procesar la nómina.'}
+                </span>
               )}
-              {loading ? 'Procesando validaciones...' : 'Procesar archivo'}
-            </button>
+            </div>
           )}
         </>
       )}
