@@ -147,14 +147,21 @@ correspondiente del maestro y se guarda en `payload_datos`.
 
 El rol `Cargador` utiliza estos endpoints protegidos:
 
-- `POST /api/v1/uploads/headers/` con el campo multipart `file` para leer
-  solamente los encabezados (`nrows=0`) de un archivo `.xlsx`.
+- `POST /api/v1/uploads/headers/` con el campo multipart `file` para inspeccionar la estructura del archivo `.xlsx`, retornando en memoria RAM:
+  - `headers`: lista de encabezados detectados en la primera fila.
+  - `file_summary`: resumen técnico `{ total_rows, non_empty_rows, total_columns }`.
+  - `column_samples`: diccionario con los primeros 3 valores representativos no vacíos por columna para asistir el emparejamiento visual.
+  - `preview_rows`: muestra paginada de hasta 15 filas útiles para la previsualización previa de la nómina en cliente sin persistir PII en BD.
 - `POST /api/v1/uploads/process/` con los campos multipart `file` y `mapping`.
   El mapper exige `map_rut` y `map_nombre`.
 
 El procesamiento exitoso devuelve `200`. Si existen rechazos parciales,
-devuelve `207` y conserva las filas válidas. La respuesta contiene
-`total_filas`, `total_procesados`, `total_errores` y `detalle_errores`.
+devuelve `207 Multi-Status` y conserva las filas válidas en una transacción atómica. La respuesta contiene
+`lote_id`, `total_filas`, `total_procesados`, `total_errores`, `detalle_errores` y el objeto `pipeline_trace` con las métricas reales de las 4 etapas internas del motor:
+1. **Limpieza Pandas:** `filas_leidas_excel` vs `filas_vacias_ignoradas`.
+2. **Módulo 11:** `aprobadas_modulo11` vs `rechazadas_modulo11`.
+3. **Cotejo Maestro:** `aprobadas_maestro_y_faena` vs `rechazadas_maestro`.
+4. **Criptografía Fernet + JSONB:** `campos_pii_cifrados_fernet`, `columnas_dinamicas_jsonb` y `ejemplo_token_cifrado` (`gAAAAAB...`).
 
 Se validan el formato y el dígito verificador del RUT mediante Módulo 11, la
 identidad y habilitación contra `Maestro_Personas`, los archivos corruptos o

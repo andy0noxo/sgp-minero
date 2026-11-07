@@ -9,7 +9,12 @@ from django.test import TestCase, override_settings
 
 from core.models import Maestro_Personas
 from core.services.encryption import decrypt_pii, encrypt_pii
-from core.services.excel_reader import FileProcessingError, read_headers, read_rows
+from core.services.excel_reader import (
+    FileProcessingError,
+    inspect_excel,
+    read_headers,
+    read_rows,
+)
 from core.services.identity_matcher import find_matching_person, normalize_name
 from core.services.mapper import MapperValidationError, validate_mapper
 from core.services.rut_validator import (
@@ -91,6 +96,25 @@ class ServiceTests(TestCase):
         invalid = SimpleUploadedFile("nomina.txt", b"content")
         with self.assertRaises(FileProcessingError):
             read_headers(invalid)
+
+    def test_inspect_excel_returns_summary_samples_and_preview(self):
+        output = BytesIO()
+        rows = [
+            {"RUT": "12345678-5", "Nombre": "Maria Perez", "Turno": "7x7"},
+            {"RUT": "18452931-9", "Nombre": "Juan Gomez", "Turno": "4x3"},
+        ]
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            pd.DataFrame(rows).to_excel(writer, index=False)
+        upload = SimpleUploadedFile("nomina_inspeccion.xlsx", output.getvalue())
+        info = inspect_excel(upload)
+        self.assertEqual(info["headers"], ["RUT", "Nombre", "Turno"])
+        self.assertEqual(info["file_summary"]["total_rows"], 2)
+        self.assertEqual(info["file_summary"]["total_columns"], 3)
+        self.assertEqual(info["file_summary"]["non_empty_rows"], 2)
+        self.assertIn("12345678-5", info["column_samples"]["RUT"])
+        self.assertEqual(len(info["preview_rows"]), 2)
+        self.assertEqual(info["preview_rows"][0]["fila"], 2)
+        self.assertEqual(info["preview_rows"][0]["data"]["RUT"], "12345678-5")
 
     def test_read_rows_with_dtype_object_preserves_numeric_ruts(self):
         output = BytesIO()

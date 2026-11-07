@@ -23,7 +23,7 @@ from .serializers import (
 )
 from .services.api_errors import UploadValidationError
 from .services.audit_service import build_audit_csv, list_audit_logs
-from .services.excel_reader import FileProcessingError, read_headers
+from .services.excel_reader import FileProcessingError, inspect_excel
 from .services.mapper import MapperValidationError
 from .services.master_person_importer import MasterImportError, import_master_people
 from .services.travel_processor import process_travel_file
@@ -136,11 +136,11 @@ class UploadHeadersView(APIView):
                 "INVALID_FILE", "Debe enviar un archivo en el campo file."
             )
         try:
-            headers = read_headers(uploaded_file)
+            info = inspect_excel(uploaded_file)
         except FileProcessingError as exc:
             raise UploadValidationError("INVALID_FILE", str(exc)) from exc
         return Response(
-            {"data": {"filename": uploaded_file.name, "headers": headers}},
+            {"data": info},
             status=status.HTTP_200_OK,
         )
 

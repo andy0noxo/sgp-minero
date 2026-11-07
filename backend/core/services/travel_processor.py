@@ -39,6 +39,14 @@ def process_travel_file(uploaded_file, mapping, user):
     processed = 0
     rows = list(dataframe.to_dict(orient="records"))
 
+    filas_leidas_excel = len(rows)
+    filas_vacias_ignoradas = 0
+    aprobadas_modulo11 = 0
+    rechazadas_modulo11 = 0
+    aprobadas_maestro_y_faena = 0
+    rechazadas_maestro = 0
+    sample_token = ""
+
     with transaction.atomic():
         batch = LoteCarga.objects.create(
             cargador=user,
@@ -54,6 +62,7 @@ def process_travel_file(uploaded_file, mapping, user):
                 or name_value is None
                 or (isinstance(name_value, float) and math.isnan(name_value))
             ):
+                filas_vacias_ignoradas += 1
                 errors.append(
                     {
                         "fila": row_number,
@@ -65,7 +74,9 @@ def process_travel_file(uploaded_file, mapping, user):
 
             try:
                 normalized_rut = validate_rut(rut_value)
+                aprobadas_modulo11 += 1
             except RutValidationError as exc:
+                rechazadas_modulo11 += 1
                 errors.append(
                     {
                         "fila": row_number,
@@ -77,6 +88,7 @@ def process_travel_file(uploaded_file, mapping, user):
 
             person, identity_error = find_matching_person(normalized_rut, name_value)
             if identity_error:
+                rechazadas_maestro += 1
                 code = (
                     "PERSON_NOT_FOUND"
                     if "no existe" in identity_error
@@ -95,13 +107,21 @@ def process_travel_file(uploaded_file, mapping, user):
                 )
                 continue
 
+            aprobadas_maestro_y_faena += 1
+
             payload = {str(key): _json_value(value) for key, value in row.items()}
             payload.pop(mapping["map_rut"], None)
             payload.pop(mapping["map_nombre"], None)
+
+            cifrado_rut = encrypt_pii(normalized_rut)
+            cifrado_nombre = encrypt_pii(person.nombre_completo)
+            if not sample_token and cifrado_rut:
+                sample_token = f"{cifrado_rut[:12]}..."
+
             payload.update(
                 {
-                    "rut_cifrado": encrypt_pii(normalized_rut),
-                    "nombre_cifrado": encrypt_pii(person.nombre_completo),
+                    "rut_cifrado": cifrado_rut,
+                    "nombre_cifrado": cifrado_nombre,
                     "faena": person.faena,
                 }
             )
@@ -114,6 +134,24 @@ def process_travel_file(uploaded_file, mapping, user):
                 payload_datos=payload,
             )
             processed += 1
+
+        dynamic_cols = [
+            str(col)
+            for col in dataframe.columns
+            if col not in (mapping["map_rut"], mapping["map_nombre"])
+        ]
+
+        pipeline_trace = {
+            "filas_leidas_excel": filas_leidas_excel,
+            "filas_vacias_ignoradas": filas_vacias_ignoradas,
+            "aprobadas_modulo11": aprobadas_modulo11,
+            "rechazadas_modulo11": rechazadas_modulo11,
+            "aprobadas_maestro_y_faena": aprobadas_maestro_y_faena,
+            "rechazadas_maestro": rechazadas_maestro,
+            "campos_pii_cifrados_fernet": processed * 2,
+            "columnas_dinamicas_jsonb": dynamic_cols,
+            "ejemplo_token_cifrado": sample_token or "gAAAAAB...",
+        }
 
         batch.filas_procesadas = processed
         batch.filas_rechazadas = len(errors)
@@ -142,6 +180,7 @@ def process_travel_file(uploaded_file, mapping, user):
                 "lote_id": str(batch.id),
                 "total_procesados": processed,
                 "total_errores": len(errors),
+                "pipeline_trace": pipeline_trace,
             },
         )
 
@@ -151,4 +190,5 @@ def process_travel_file(uploaded_file, mapping, user):
         "total_procesados": processed,
         "total_errores": len(errors),
         "detalle_errores": errors,
+        "pipeline_trace": pipeline_trace,
     }

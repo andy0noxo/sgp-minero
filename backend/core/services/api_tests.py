@@ -52,6 +52,10 @@ class UploadApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["data"]["headers"], ["Rut", "Nombre"])
+        self.assertEqual(response.data["data"]["file_summary"]["total_rows"], 1)
+        self.assertEqual(response.data["data"]["file_summary"]["total_columns"], 2)
+        self.assertIn("Rut", response.data["data"]["column_samples"])
+        self.assertEqual(len(response.data["data"]["preview_rows"]), 1)
 
     @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
     def test_process_returns_partial_feedback_and_persists_valid_rows(self):
@@ -86,6 +90,14 @@ class UploadApiTests(TestCase):
             RegistroViaje.objects.get().payload_datos["faena"],
             "Faena Cordillera",
         )
+        trace = response.data["data"]["pipeline_trace"]
+        self.assertEqual(trace["filas_leidas_excel"], 2)
+        self.assertEqual(trace["aprobadas_modulo11"], 1)
+        self.assertEqual(trace["rechazadas_modulo11"], 1)
+        self.assertEqual(trace["aprobadas_maestro_y_faena"], 1)
+        self.assertEqual(trace["campos_pii_cifrados_fernet"], 2)
+        self.assertEqual(trace["columnas_dinamicas_jsonb"], ["Fecha"])
+        self.assertTrue(trace["ejemplo_token_cifrado"].startswith("gAAAAAB"))
 
     def test_upload_requires_file(self):
         response = self.client.post("/api/v1/uploads/headers/", {}, format="multipart")
