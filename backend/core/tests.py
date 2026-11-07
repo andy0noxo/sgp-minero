@@ -1,6 +1,7 @@
 import os
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -200,3 +201,30 @@ class DemoDataCommandTests(TestCase):
     def test_seed_is_rejected_outside_development(self):
         with self.assertRaises(CommandError):
             call_command("seed_demo_data")
+
+
+class HealthCheckAndDeploymentTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_health_check_endpoint_returns_200_and_healthy(self):
+        response = self.client.get("/api/v1/health/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "ok")
+        self.assertEqual(response.data["database"], "ok")
+
+    def test_whitenoise_middleware_is_installed(self):
+        self.assertIn(
+            "whitenoise.middleware.WhiteNoiseMiddleware",
+            settings.MIDDLEWARE,
+        )
+        sec_idx = settings.MIDDLEWARE.index(
+            "django.middleware.security.SecurityMiddleware"
+        )
+        wn_idx = settings.MIDDLEWARE.index("whitenoise.middleware.WhiteNoiseMiddleware")
+        self.assertEqual(wn_idx, sec_idx + 1)
+
+    def test_staticfiles_and_storage_configured(self):
+        self.assertTrue(bool(settings.STATIC_ROOT))
+        self.assertTrue(hasattr(settings, "STORAGES"))
+        self.assertIn("staticfiles", settings.STORAGES)

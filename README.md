@@ -36,7 +36,7 @@ El proyecto opera bajo una arquitectura de servicios contenerizados desacoplados
 * SimpleJWT & Argon2 (`argon2-cffi`) (Autenticación JWT y hashing resistente a GPU)  
 * Pandas & Openpyxl (Motor de ingesta y lectura de Excel y CSV)  
 * Cryptography (Módulo `Fernet` `AES-128-CBC + HMAC-SHA256` para cifrado PII)  
-* Gunicorn, Pytest, Flake8 & Black (Servidor WSGI de producción, suite de **37 pruebas automatizadas** y linters/formateadores contenerizados)
+* Gunicorn, WhiteNoise, Pytest, Flake8 & Black (Servidor WSGI de producción, servicio de estáticos, suite de **68 pruebas automatizadas** y linters/formateadores contenerizados)
 
 **Base de Datos & DevSecOps:**
 
@@ -45,21 +45,15 @@ El proyecto opera bajo una arquitectura de servicios contenerizados desacoplados
 * Neon (PostgreSQL Cloud Serverless con conexión SSL)  
 * GitHub & GitHub Actions CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) — linting, compilación y tests automáticos)
 
-### Compatibilidad con hosting cloud
+### Compatibilidad con hosting cloud (Vercel + Render + Neon)
 
-La separación prevista por la documentación se soporta con:
+La separación prevista por la arquitectura desacoplada se encuentra 100% configurada y soportada:
 
-* Frontend compilado en Vercel.
-* Backend Dockerizado en Render o Railway.
-* PostgreSQL administrado en Neon.
+* **Frontend compilado en Vercel:** Soporte para enrutamiento SPA sin errores 404 al refrescar (`frontend/vercel.json` con `rewrites` y cabeceras de seguridad HTTP).
+* **Backend Dockerizado en Render:** Aprovisionable vía Blueprint (`render.yaml`) o Web Service Docker (`backend/Dockerfile` + `backend/production_entrypoint.sh`), con servicio de estáticos comprimidos (`WhiteNoise`), endpoint de monitoreo en `/api/v1/health/` y soporte de cookies cross-domain (`SameSite=None; Secure=True`).
+* **PostgreSQL administrado en Neon:** Conexión forzada SSL (`sslmode=require`) mediante `DATABASE_URL`.
 
-Para el backend cloud se deben configurar `DJANGO_DEBUG=False`,
-`DJANGO_COOKIE_SECURE=True`, `REFRESH_TOKEN_COOKIE_SAMESITE=None`,
-`DJANGO_ALLOWED_HOSTS` con el dominio del backend,
-`CORS_ALLOWED_ORIGINS` con el dominio HTTPS exacto de Vercel y `DATABASE_URL`
-con la cadena SSL entregada por Neon. El contenedor ejecuta las migraciones
-antes de Gunicorn (`production_entrypoint.sh`) y escucha el puerto `PORT` del
-proveedor.
+Para un instructivo operacional completo de despliegue paso a paso, consulta el documento oficial [docs/GUIA_DESPLIEGUE_CLOUD.md](docs/GUIA_DESPLIEGUE_CLOUD.md).
 
 ## **Ejecución local y comandos**
 

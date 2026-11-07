@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: sgp-minero-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health/
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: AES_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_COOKIE_SECURE
+        value: "True"
+      - key: REFRESH_TOKEN_COOKIE_SAMESITE
+        value: "None"
+      - key: MAX_FAILED_LOGIN_ATTEMPTS
+        value: "3"
+      - key: LOGIN_LOCKOUT_MINUTES
+        value: "5"
+      - key: SEED_DEMO_DATA
+        value: "False"

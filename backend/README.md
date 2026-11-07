@@ -347,20 +347,24 @@ porque ambos servicios se prueban bajo `localhost`.
 
 La configuración de producción activa redirección HTTPS y HSTS. Las llaves,
 credenciales y archivos `.env` nunca deben subirse al repositorio. Las
-migraciones deben ejecutarse antes de levantar la aplicación:
+migraciones y la recolección de estáticos deben ejecutarse antes de levantar la aplicación:
 
 ```text
-python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py migrate --noinput
 python manage.py check --deploy
 ```
 
+El script `backend/production_entrypoint.sh` automatiza este proceso en Render/producción antes de arrancar Gunicorn. Para una guía paso a paso completa del despliegue en Neon, Render y Vercel, consulta el documento oficial `docs/GUIA_DESPLIEGUE_CLOUD.md`.
+
 ## Cobertura de QA
 
-La suite automatizada actual cuenta con **46 pruebas** distribuidas en 5 módulos
+La suite automatizada cuenta con **68 pruebas** distribuidas en 8 módulos
 (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
-`core/services/tests_master_import.py` y `core/services/tests_dashboard.py`) y
-ejecutadas automáticamente en GitHub Actions (`.github/workflows/ci.yml`),
-cubriendo:
+`core/services/tests_master_import.py`, `core/services/tests_dashboard.py`,
+`core/services/tests_user_management.py`, `core/services/tests_audit.py` y
+`core/services/tests_stress.py`) ejecutadas automáticamente en GitHub Actions
+(`.github/workflows/ci.yml`), cubriendo:
 
 - Autenticación JWT, login por correo o RUT en múltiples formatos, renovación y
   cierre de sesión por cookie `HttpOnly`, bloqueo tras 3 intentos fallidos,
@@ -369,6 +373,9 @@ cubriendo:
   (`core/tests.py`).
 - Idempotencia del comando `seed_demo_data`, preservación de contraseñas y
   bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
+- Verificación del endpoint de salud `GET /api/v1/health/` (200 OK), presencia
+  y orden de `WhiteNoiseMiddleware` en `MIDDLEWARE`, y configuración de
+  `STATIC_ROOT` y `STORAGES` (`core/tests.py`).
 - Validación matemática de RUT (Módulo 11 con soporte para dígito `K`
   minúscula/mayúscula, formato con o sin puntos/guión, RUTs sin separadores,
   rechazo de cuerpo alfanumérico y texto basura no estructurado, enteros
@@ -380,16 +387,26 @@ cubriendo:
   misma columna) (`core/services/tests.py`).
 - Cifrado y descifrado autenticado con `Fernet` y manejo de llaves inválidas o
   ausentes (`core/services/tests.py`).
-- Lectura exclusiva de encabezados Excel (`nrows=0`), rechazo de archivos
-  corruptos/vacíos/mayores a 10 MB, procesamiento con respuesta parcial `207`,
-  persistencia cifrada en `JSONB`, historial de cargas y aislamiento estricto
-  por usuario (`core/services/api_tests.py`).
+- Lectura exclusiva de encabezados Excel (`nrows=0`), inspección estructural
+  (`inspect_excel`), rechazo de archivos corruptos/vacíos/mayores a 10 MB,
+  procesamiento con respuesta parcial `207`, persistencia cifrada en `JSONB`,
+  trazabilidad de las 4 etapas del pipeline (`pipeline_trace`), historial de
+  cargas y aislamiento estricto por usuario (`core/services/api_tests.py`).
 - Importación masiva del Administrador (`UPSERT` CSV/XLSX), errores parciales,
   listado paginado y permisos RBAC (`core/services/tests_master_import.py`).
 - Filtros del Dashboard del Consultor, paginación, acceso exclusivo de solo
   lectura y descifrado PII únicamente en memoria RAM (`core/services/tests_dashboard.py`).
+- Gestión de usuarios y roles del Administrador (`US-16 / SGP-28`), hashing
+  `Argon2`, protecciones anti-autodesactivación, democión y último admin,
+  y control RBAC (`core/services/tests_user_management.py`).
+- Consulta y exportación de bitácora de auditoría operativa (`US-17 / SGP-29`),
+  exportación CSV UTF-8 BOM y trazabilidad de eventos inmutable
+  (`core/services/tests_audit.py`).
+- Benchmark de estrés con 5.000 filas en **2,52 segundos** (~1.980 filas/s)
+  y auditoría SQL en PostgreSQL certificando tokens Fernet y cero PII en plano
+  (`US-14 / SGP-26`, `core/services/tests_stress.py`).
 
-La suite completa consta de **48 pruebas automatizadas** que se ejecutan
+La suite completa consta de **68 pruebas automatizadas** que se ejecutan
 íntegramente en verde (`100% pass`).
 
 Para ejecutar todos los archivos de pruebas descubiertos por pytest:
@@ -398,9 +415,30 @@ Para ejecutar todos los archivos de pruebas descubiertos por pytest:
 docker compose exec backend pytest
 ```
 
-La prueba de rendimiento con 5.000 filas (`US-14 / SGP-26`) queda programada
-como hito específico de certificación de carga del Sprint 3 y no forma parte de
-la corrida rápida de CI.
+## Catálogo de Dependencias y Justificación Técnica (requirements.txt)
+
+Todas las dependencias instaladas en el backend se encuentran versionadas en `requirements.txt` y justificadas en detalle en el documento oficial [`docs/CATALOGO_DEPENDENCIAS_BACKEND.md`](../docs/CATALOGO_DEPENDENCIAS_BACKEND.md):
+
+| Paquete | Versión | Rol en SGP-Minero |
+| :--- | :--- | :--- |
+| `Django` | `>=5.2,<6.2` | Framework web, ORM relacional híbrido, migraciones y consola `/admin/`. |
+| `djangorestframework` | `>=3.15,<4` | Controladores API REST (`/api/v1/`), serializadores y permisos RBAC. |
+| `djangorestframework-simplejwt` | `>=5.3,<6` | Autenticación JWT (`Access` en RAM + `Refresh` en cookie `HttpOnly`). |
+| `django-environ` | `>=0.11,<1` | Mapeo 12-Factor App de variables de entorno y `DATABASE_URL` (Neon SSL). |
+| `django-cors-headers` | `>=4.7,<5` | Control de orígenes cruzados (CORS) estricto entre Vercel y Render. |
+| `psycopg2-binary` | `>=2.9,<3` | Driver PostgreSQL nativo en C con soporte para JSONB y SSL. |
+| `pandas` | `>=2.2,<3` | Ingesta masiva, sanitización `dtype=object` e inspección en memoria. |
+| `openpyxl` | `>=3.1,<4` | Motor de lectura/escritura de planillas Excel OpenXML (`.xlsx`). |
+| `cryptography` | `>=44,<47` | Cifrado simétrico autenticado Fernet (`AES-128-CBC + HMAC-SHA256`). |
+| `pytest` | `>=8,<9` | Motor de ejecución de la suite automatizada de pruebas unitarias. |
+| `pytest-django` | `>=4.9,<5` | Aislamiento transaccional de BD y fixtures para Django en Pytest. |
+| `gunicorn` | `>=23,<24` | Servidor WSGI multi-proceso para ejecución concurrente en Render. |
+| `whitenoise` | `>=6.6.0,<7.0.0` | Servicio autónomo y compresión Brotli/Gzip de estáticos de `/admin/`. |
+| `argon2-cffi` | `>=23.0.0` | Hasher primario de contraseñas resistente a fuerza bruta en GPU/ASIC. |
+| `flake8` | `>=7.1,<8` | Linter de código estático (PEP 8 y detección de errores lógicos). |
+| `black` | `>=24.8,<26` | Formateador determinista de código Python en 88 caracteres. |
+
+Para el detalle completo de cada paquete con su definición técnica, propósito general, archivos donde se utiliza y justificación de selección frente a alternativas, consulta [`docs/CATALOGO_DEPENDENCIAS_BACKEND.md`](../docs/CATALOGO_DEPENDENCIAS_BACKEND.md).
 
 ## Dominio y separación de base de datos
 
