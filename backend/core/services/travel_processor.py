@@ -1,4 +1,5 @@
 import math
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -6,7 +7,7 @@ from pathlib import Path
 from django.db import transaction
 from django.utils import timezone
 
-from core.models import LoteCarga, RegistroAuditoria, RegistroViaje
+from core.models import LoteCarga, Maestro_Personas, RegistroAuditoria, RegistroViaje
 from core.services.encryption import encrypt_pii
 from core.services.excel_reader import FileProcessingError, read_rows
 from core.services.identity_matcher import find_matching_person
@@ -47,6 +48,23 @@ def process_travel_file(uploaded_file, mapping, user):
     rechazadas_maestro = 0
     sample_token = ""
 
+    # Precarga masiva de personas en O(1) para evitar el problema N+1 SQL
+    # en lotes grandes (US-14 / SGP-26)
+    candidate_ruts = set()
+    for row in rows:
+        rut_value = row.get(mapping["map_rut"])
+        if rut_value is not None:
+            try:
+                candidate_ruts.add(validate_rut(rut_value))
+            except RutValidationError:
+                pass
+
+    people_dict = {
+        p.rut: p for p in Maestro_Personas.objects.filter(rut__in=candidate_ruts)
+    }
+
+    records_to_create = []
+
     with transaction.atomic():
         batch = LoteCarga.objects.create(
             cargador=user,
@@ -86,7 +104,9 @@ def process_travel_file(uploaded_file, mapping, user):
                 )
                 continue
 
-            person, identity_error = find_matching_person(normalized_rut, name_value)
+            person, identity_error = find_matching_person(
+                normalized_rut, name_value, people_dict=people_dict
+            )
             if identity_error:
                 rechazadas_maestro += 1
                 code = (
@@ -125,15 +145,21 @@ def process_travel_file(uploaded_file, mapping, user):
                     "faena": person.faena,
                 }
             )
-            RegistroViaje.objects.create(
-                lote=batch,
-                cargador=user,
-                nombre_archivo_origen=uploaded_file.name,
-                fila_origen=row_number,
-                estado_validacion=RegistroViaje.EstadoValidacion.APROBADO,
-                payload_datos=payload,
+            records_to_create.append(
+                RegistroViaje(
+                    id=uuid.uuid4(),
+                    lote=batch,
+                    cargador=user,
+                    nombre_archivo_origen=uploaded_file.name,
+                    fila_origen=row_number,
+                    estado_validacion=RegistroViaje.EstadoValidacion.APROBADO,
+                    payload_datos=payload,
+                )
             )
             processed += 1
+
+        if records_to_create:
+            RegistroViaje.objects.bulk_create(records_to_create, batch_size=1000)
 
         dynamic_cols = [
             str(col)

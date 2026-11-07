@@ -11,9 +11,12 @@ def normalize_name(value):
     return " ".join(plain.casefold().split())
 
 
-def find_matching_person(rut, name, queryset=None):
-    people = queryset if queryset is not None else Maestro_Personas.objects
-    person = people.filter(rut=rut).first()
+def find_matching_person(rut, name, queryset=None, people_dict=None):
+    if people_dict is not None:
+        person = people_dict.get(rut)
+    else:
+        people = queryset if queryset is not None else Maestro_Personas.objects
+        person = people.filter(rut=rut).first()
     if person is None:
         return None, "El RUT no existe en el maestro de personas."
     if not person.estado_habilitacion:
