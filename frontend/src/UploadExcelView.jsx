@@ -20,6 +20,15 @@ function checkRutFormat(val) {
   return clean.length >= 8 && clean.length <= 9;
 }
 
+function cleanDisplayValue(val) {
+  if (val === null || val === undefined || val === '') return '';
+  const text = String(val).trim();
+  if (text.length === 19 && (text.endsWith(' 00:00:00') || text.endsWith('T00:00:00'))) {
+    return text.slice(0, 10);
+  }
+  return text;
+}
+
 export default function UploadExcelView({ role }) {
   const isAdmin = role === 'Administrador';
   const { faena } = useOutletContext();
@@ -30,7 +39,7 @@ export default function UploadExcelView({ role }) {
   const [fileSummary, setFileSummary] = useState(null);
   const [columnSamples, setColumnSamples] = useState({});
   const [previewRows, setPreviewRows] = useState([]);
-  const [mapping, setMapping] = useState({ map_rut: '', map_nombre: '' });
+  const [mapping, setMapping] = useState({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
@@ -52,7 +61,7 @@ export default function UploadExcelView({ role }) {
     setFileSummary(null);
     setColumnSamples({});
     setPreviewRows([]);
-    setMapping({ map_rut: '', map_nombre: '' });
+    setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
     setResult(null);
     setCurrentStep(1);
     setError(message);
@@ -98,7 +107,7 @@ export default function UploadExcelView({ role }) {
     setFileSummary(null);
     setColumnSamples({});
     setPreviewRows([]);
-    setMapping({ map_rut: '', map_nombre: '' });
+    setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
     setResult(null);
     setCurrentStep(1);
     setError('');
@@ -115,7 +124,7 @@ export default function UploadExcelView({ role }) {
     setFileSummary(null);
     setColumnSamples({});
     setPreviewRows([]);
-    setMapping({ map_rut: '', map_nombre: '' });
+    setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
     setResult(null);
     setCurrentStep(1);
     setError('');
@@ -134,7 +143,7 @@ export default function UploadExcelView({ role }) {
       setFileSummary(data.file_summary || null);
       setColumnSamples(data.column_samples || {});
       setPreviewRows(data.preview_rows || []);
-      setMapping({ map_rut: '', map_nombre: '' });
+      setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
       setCurrentStep(2);
     } catch (requestError) {
       setError(requestError.message);
@@ -150,7 +159,14 @@ export default function UploadExcelView({ role }) {
     setError('');
     setToast(null);
     try {
-      const response = isAdmin ? await importMasterPeople(file) : await processUpload(file, mapping);
+      const payloadMapping = {
+        map_rut: mapping.map_rut,
+        map_nombre: mapping.map_nombre,
+        ...(mapping.map_fecha_vuelo && mapping.map_fecha_vuelo !== '__NONE__'
+          ? { map_fecha_vuelo: mapping.map_fecha_vuelo }
+          : {}),
+      };
+      const response = isAdmin ? await importMasterPeople(file) : await processUpload(file, payloadMapping);
       setResult(response.data);
       if (isAdmin) {
         await loadMasterPeople();
@@ -188,12 +204,24 @@ export default function UploadExcelView({ role }) {
     loadMasterPeople({ ...next, faena, page: nextPage });
   };
 
-  const isMappingComplete = Boolean(mapping.map_rut && mapping.map_nombre);
-  const isSameColumnSelected = Boolean(isMappingComplete && mapping.map_rut === mapping.map_nombre);
+  const requiresFechaMapping = headers.length >= 3;
+  const isFechaMappedOrSkipped = !requiresFechaMapping || Boolean(mapping.map_fecha_vuelo);
+  const isMappingComplete = Boolean(mapping.map_rut && mapping.map_nombre && isFechaMappedOrSkipped);
+
+  const selectedRealColumns = [
+    mapping.map_rut,
+    mapping.map_nombre,
+    mapping.map_fecha_vuelo && mapping.map_fecha_vuelo !== '__NONE__' ? mapping.map_fecha_vuelo : null,
+  ].filter(Boolean);
+  const isSameColumnSelected = new Set(selectedRealColumns).size !== selectedRealColumns.length;
   const isMappingValid = Boolean(isMappingComplete && !isSameColumnSelected);
   const canSubmit = isAdmin ? Boolean(file) : Boolean(file && headers.length > 0 && isMappingValid);
 
-  const dynamicColumns = headers.filter((h) => h !== mapping.map_rut && h !== mapping.map_nombre);
+  const activeFechaCol =
+    mapping.map_fecha_vuelo && mapping.map_fecha_vuelo !== '__NONE__' ? mapping.map_fecha_vuelo : '';
+  const dynamicColumns = headers.filter(
+    (h) => h !== mapping.map_rut && h !== mapping.map_nombre && h !== activeFechaCol
+  );
 
   const stepperSteps = [
     { num: 1, title: '1. Archivo Excel', desc: 'Subida e inspección' },
@@ -521,13 +549,13 @@ export default function UploadExcelView({ role }) {
               </span>
             </div>
 
-            {/* Panel Comparativo 2 Columnas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Panel Comparativo 3 Columnas del Esquema de Pasajes */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Bloque RUT */}
               <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span className="text-amber-400">*</span> Campo Obligatorio 1: RUT Pasajero
+                    <span className="text-amber-400">*</span> Campo 1: RUT Pasajero
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
                     🔒 Cifrado AES-128
@@ -562,7 +590,7 @@ export default function UploadExcelView({ role }) {
                     <div className="flex flex-wrap gap-1.5">
                       {columnSamples[mapping.map_rut].map((s, idx) => (
                         <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
-                          {s}
+                          {cleanDisplayValue(s)}
                         </span>
                       ))}
                     </div>
@@ -578,7 +606,7 @@ export default function UploadExcelView({ role }) {
               <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span className="text-amber-400">*</span> Campo Obligatorio 2: Nombre Completo
+                    <span className="text-amber-400">*</span> Campo 2: Nombre Completo
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
                     🔒 Cifrado AES-128
@@ -613,7 +641,7 @@ export default function UploadExcelView({ role }) {
                     <div className="flex flex-wrap gap-1.5">
                       {columnSamples[mapping.map_nombre].map((s, idx) => (
                         <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700">
-                          {s}
+                          {cleanDisplayValue(s)}
                         </span>
                       ))}
                     </div>
@@ -624,12 +652,68 @@ export default function UploadExcelView({ role }) {
                   )}
                 </div>
               </div>
+
+              {/* Bloque Fecha de Vuelo */}
+              <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span className="text-emerald-400">*</span> Campo 3: Fecha de Vuelo
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+                    ✈️ Dato de Pasaje
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Fecha programada del traslado o vuelo del trabajador. Se limpia de horas vacías y se estandariza como <span className="font-mono text-emerald-300">fecha_vuelo</span>.
+                </p>
+                <div>
+                  <label className="text-[11px] text-slate-300 font-semibold block mb-1">
+                    Seleccionar columna de tu Excel:
+                  </label>
+                  <select
+                    value={mapping.map_fecha_vuelo}
+                    onChange={(e) => setMapping({ ...mapping, map_fecha_vuelo: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="">-- Elige la columna con la Fecha de Vuelo --</option>
+                    {headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                    <option value="__NONE__">Sin columna de Fecha de Vuelo en este archivo</option>
+                  </select>
+                </div>
+                {/* Muestras reales de la columna seleccionada */}
+                <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg">
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                    Muestras reales detectadas:
+                  </p>
+                  {activeFechaCol && columnSamples[activeFechaCol]?.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {columnSamples[activeFechaCol].map((s, idx) => (
+                        <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700">
+                          {cleanDisplayValue(s)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 italic">
+                      {mapping.map_fecha_vuelo === '__NONE__'
+                        ? 'El archivo se procesará sin columna de Fecha de Vuelo'
+                        : activeFechaCol
+                          ? 'Sin datos de muestra'
+                          : 'Selecciona una columna para ver sus fechas reales'}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Alerta de columna idéntica */}
             {isSameColumnSelected && (
               <p className="p-3 bg-rose-950/40 border border-rose-900/60 rounded-lg text-xs text-rose-300 flex items-center gap-2">
-                <span>⚠️</span> La columna de RUT y la columna de Nombre Completo no pueden ser la misma ({mapping.map_rut}).
+                <span>⚠️</span> Las columnas seleccionadas para RUT, Nombre Completo y Fecha de Vuelo deben ser distintas entre sí.
               </p>
             )}
 
@@ -717,6 +801,11 @@ export default function UploadExcelView({ role }) {
                       <th className="p-3 font-semibold text-sky-400">
                         Nombre Completo (Col: {mapping.map_nombre})
                       </th>
+                      {activeFechaCol && (
+                        <th className="p-3 font-semibold text-emerald-400">
+                          Fecha de Vuelo (Col: {activeFechaCol})
+                        </th>
+                      )}
                       {dynamicColumns.map((col) => (
                         <th key={col} className="p-3 font-normal text-slate-400">
                           {col} <span className="text-[10px] text-slate-500 font-mono">(JSONB)</span>
@@ -727,8 +816,9 @@ export default function UploadExcelView({ role }) {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
                     {previewRows.map((row) => {
-                      const rutVal = row.data[mapping.map_rut] || '';
-                      const nombreVal = row.data[mapping.map_nombre] || '';
+                      const rutVal = cleanDisplayValue(row.data[mapping.map_rut]);
+                      const nombreVal = cleanDisplayValue(row.data[mapping.map_nombre]);
+                      const fechaVal = activeFechaCol ? cleanDisplayValue(row.data[activeFechaCol]) : '';
                       const isFormatOk = checkRutFormat(rutVal);
 
                       return (
@@ -751,9 +841,14 @@ export default function UploadExcelView({ role }) {
                             </div>
                           </td>
                           <td className="p-3 font-medium text-slate-200">{nombreVal || '—'}</td>
+                          {activeFechaCol && (
+                            <td className="p-3 font-mono text-emerald-300 font-semibold">
+                              {fechaVal || '—'}
+                            </td>
+                          )}
                           {dynamicColumns.map((col) => (
                             <td key={col} className="p-3 text-slate-400">
-                              {row.data[col] || '—'}
+                              {cleanDisplayValue(row.data[col]) || '—'}
                             </td>
                           ))}
                           <td className="p-3">

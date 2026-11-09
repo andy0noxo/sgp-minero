@@ -18,10 +18,28 @@ from core.services.rut_validator import RutValidationError, validate_rut
 def _json_value(value):
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime):
+        if (
+            value.hour == 0
+            and value.minute == 0
+            and value.second == 0
+            and value.microsecond == 0
+        ):
+            return value.date().isoformat()
+        return value.isoformat(sep=" ")
+    if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else value
     if isinstance(value, Decimal):
-        return float(value)
+        return int(value) if value == int(value) else float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if len(text) == 19 and (
+            text.endswith(" 00:00:00") or text.endswith("T00:00:00")
+        ):
+            return text[:10]
+        return text
     return value
 
 
@@ -133,6 +151,12 @@ def process_travel_file(uploaded_file, mapping, user):
             payload.pop(mapping["map_rut"], None)
             payload.pop(mapping["map_nombre"], None)
 
+            mapped_fecha_col = mapping.get("map_fecha_vuelo")
+            if mapped_fecha_col:
+                fecha_vuelo_val = _json_value(row.get(mapped_fecha_col))
+                payload.pop(mapped_fecha_col, None)
+                payload["fecha_vuelo"] = fecha_vuelo_val
+
             cifrado_rut = encrypt_pii(normalized_rut)
             cifrado_nombre = encrypt_pii(person.nombre_completo)
             if not sample_token and cifrado_rut:
@@ -161,10 +185,17 @@ def process_travel_file(uploaded_file, mapping, user):
         if records_to_create:
             RegistroViaje.objects.bulk_create(records_to_create, batch_size=1000)
 
+        mapped_columns_set = {
+            col
+            for col in (
+                mapping.get("map_rut"),
+                mapping.get("map_nombre"),
+                mapping.get("map_fecha_vuelo"),
+            )
+            if col
+        }
         dynamic_cols = [
-            str(col)
-            for col in dataframe.columns
-            if col not in (mapping["map_rut"], mapping["map_nombre"])
+            str(col) for col in dataframe.columns if col not in mapped_columns_set
         ]
 
         pipeline_trace = {

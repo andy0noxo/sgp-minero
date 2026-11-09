@@ -161,7 +161,7 @@ El rol `Cargador` utiliza estos endpoints protegidos:
   - `column_samples`: diccionario con los primeros 3 valores representativos no vacíos por columna para asistir el emparejamiento visual.
   - `preview_rows`: muestra paginada de hasta 15 filas útiles para la previsualización previa de la nómina en cliente sin persistir PII en BD.
 - `POST /api/v1/uploads/process/` con los campos multipart `file` y `mapping`.
-  El mapper exige `map_rut` y `map_nombre`.
+  El mapper exige `map_rut` y `map_nombre` y admite el mapeo oficial de la fecha de vuelo mediante `map_fecha_vuelo` (estandarizándola bajo la llave canónica `fecha_vuelo` en formato `YYYY-MM-DD`, eliminando horas vacías `00:00:00` de celdas Fecha de Excel y sufijos `.0` en números enteros).
 
 El procesamiento exitoso devuelve `200`. Si existen rechazos parciales,
 devuelve `207 Multi-Status` y conserva las filas válidas en una transacción atómica. La respuesta contiene
@@ -357,7 +357,7 @@ El script `backend/production_entrypoint.sh` automatiza este proceso en Render/p
 
 ## Cobertura de QA
 
-La suite automatizada cuenta con **69 pruebas** distribuidas en 8 módulos
+La suite automatizada cuenta con **70 pruebas** distribuidas en 8 módulos
 (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
 `core/services/tests_master_import.py`, `core/services/tests_dashboard.py`,
 `core/services/tests_user_management.py`, `core/services/tests_audit.py` y
@@ -382,13 +382,15 @@ La suite automatizada cuenta con **69 pruebas** distribuidas en 8 módulos
   `dtype=object` para evitar alteraciones de tipo, normalización de nombres sin
   tildes ni espacios sobrantes, coincidencia contra el maestro y validación
   estricta del mapeo dinámico de columnas (`validate_mapper`: campos
-  obligatorios `map_rut` y `map_nombre`, columnas existentes y prohibición de
-  misma columna) (`core/services/tests.py`).
+  obligatorios `map_rut` y `map_nombre`, campo de pasaje `map_fecha_vuelo`,
+  columnas existentes y prohibición de misma columna) (`core/services/tests.py`).
 - Cifrado y descifrado autenticado con `Fernet` y manejo de llaves inválidas o
   ausentes (`core/services/tests.py`).
 - Lectura exclusiva de encabezados Excel (`nrows=0`), inspección estructural
-  (`inspect_excel`), rechazo de archivos corruptos/vacíos/mayores a 10 MB,
-  procesamiento con respuesta parcial `207`, persistencia cifrada en `JSONB`,
+  (`inspect_excel`) con limpieza de fechas Excel (`00:00:00` -> `YYYY-MM-DD`) y
+  enteros flotantes (`.0`), rechazo de archivos corruptos/vacíos/mayores a 10 MB,
+  procesamiento con respuesta parcial `207`, estandarización de `map_fecha_vuelo`
+  a `fecha_vuelo`, persistencia cifrada en `JSONB`,
   trazabilidad de las 4 etapas del pipeline (`pipeline_trace`), historial de
   cargas enriquecido (`summary_kpis`, `tasa_aprobacion`, `columnas_dinamicas`,
   `filas_tabla`) y aislamiento estricto por usuario (`core/services/api_tests.py`).
@@ -406,7 +408,7 @@ La suite automatizada cuenta con **69 pruebas** distribuidas en 8 módulos
   y auditoría SQL en PostgreSQL certificando tokens Fernet y cero PII en plano
   (`US-14 / SGP-26`, `core/services/tests_stress.py`).
 
-La suite completa consta de **69 pruebas automatizadas** que se ejecutan
+La suite completa consta de **70 pruebas automatizadas** que se ejecutan
 íntegramente en verde (`100% pass`).
 
 Para ejecutar todos los archivos de pruebas descubiertos por pytest:

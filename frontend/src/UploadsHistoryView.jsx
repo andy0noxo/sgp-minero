@@ -483,13 +483,16 @@ export default function UploadsHistoryView() {
                 </p>
               </div>
               <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-lg">
-                <p className="text-[10px] text-slate-400 uppercase">Campos Obligatorios PII</p>
+                <p className="text-[10px] text-slate-400 uppercase">Campos del Esquema de Pasajes</p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
                     🔒 RUT (AES-128)
                   </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30">
                     🔒 Nombre (AES-128)
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                    ✈️ Fecha Vuelo
                   </span>
                 </div>
               </div>
@@ -737,6 +740,7 @@ export default function UploadsHistoryView() {
                       <th className="p-3">Estado</th>
                       <th className="p-3 text-amber-400">RUT (Protección PII)</th>
                       <th className="p-3 text-sky-400">Nombre (Protección PII)</th>
+                      <th className="p-3 text-emerald-400">Fecha Vuelo</th>
                       <th className="p-3 text-emerald-400">Faena Asignada</th>
                       {dynamicColumns.map((col) => (
                         <th key={col} className="p-3 font-normal text-slate-300">
@@ -793,6 +797,9 @@ export default function UploadsHistoryView() {
                             ) : (
                               <span className="text-[11px] text-slate-500 italic">No persistido</span>
                             )}
+                          </td>
+                          <td className="p-3 font-mono text-emerald-300">
+                            {isApproved ? (row.fecha_vuelo || '—') : '—'}
                           </td>
                           <td className="p-3">
                             {isApproved ? (

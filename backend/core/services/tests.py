@@ -167,10 +167,36 @@ class ServiceTests(TestCase):
             )
 
     def test_validate_mapper_valid_mapping(self):
-        available = ["RUT_COL", "NOMBRE_COL", "OTRA_COL"]
+        available = ["RUT_COL", "NOMBRE_COL", "FECHA_COL", "OTRA_COL"]
         mapping = {"map_rut": "RUT_COL", "map_nombre": "NOMBRE_COL"}
         cleaned = validate_mapper(mapping, available)
         self.assertEqual(cleaned, {"map_rut": "RUT_COL", "map_nombre": "NOMBRE_COL"})
+
+        with_fecha = validate_mapper(
+            {
+                "map_rut": "RUT_COL",
+                "map_nombre": "NOMBRE_COL",
+                "map_fecha_vuelo": "FECHA_COL",
+            },
+            available,
+        )
+        self.assertEqual(
+            with_fecha,
+            {
+                "map_rut": "RUT_COL",
+                "map_nombre": "NOMBRE_COL",
+                "map_fecha_vuelo": "FECHA_COL",
+            },
+        )
+        with self.assertRaises(MapperValidationError):
+            validate_mapper(
+                {
+                    "map_rut": "RUT_COL",
+                    "map_nombre": "NOMBRE_COL",
+                    "map_fecha_vuelo": "RUT_COL",
+                },
+                available,
+            )
 
     def test_validate_mapper_missing_fields_raises_error(self):
         available = ["RUT_COL", "NOMBRE_COL"]

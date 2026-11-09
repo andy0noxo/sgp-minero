@@ -9,9 +9,29 @@ function csvValue(value) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
+function cleanDateString(val) {
+  if (!val) return '—';
+  const text = String(val).trim();
+  if (text.length === 19 && (text.endsWith(' 00:00:00') || text.endsWith('T00:00:00'))) {
+    return text.slice(0, 10);
+  }
+  return text || '—';
+}
+
 function getFlightDate(record) {
   const data = record.datos || {};
-  return data.fecha_vuelo || data.fecha || data.Fecha || data.FECHA || '—';
+  const direct =
+    data.fecha_vuelo ||
+    data.Fecha_Vuelo ||
+    data.FECHA_VUELO ||
+    data.fecha_viaje ||
+    data.Fecha_Viaje ||
+    data.fecha ||
+    data.Fecha ||
+    data.FECHA;
+  if (direct) return cleanDateString(direct);
+  const matchingKey = Object.keys(data).find((k) => k.toLowerCase().includes('fecha'));
+  return matchingKey ? cleanDateString(data[matchingKey]) : '—';
 }
 
 function exportCsv(records) {

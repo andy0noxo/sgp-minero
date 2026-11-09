@@ -178,3 +178,55 @@ class UploadApiTests(TestCase):
         response = self.client.get("/api/v1/uploads/history/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["data"]["pagination"]["total"], 0)
+
+    @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
+    def test_process_maps_fecha_vuelo_and_strips_midnight_time_and_float_decimals(self):
+        from datetime import datetime
+
+        excel_file = excel_upload(
+            [
+                {
+                    "Doc_Identidad": "12345678-5",
+                    "Nombres_Pasajero": "María Pérez",
+                    "Fecha_Vuelo_Contratista": datetime(2026, 10, 25, 0, 0),
+                    "Telefono_Extra": 987654321.0,
+                }
+            ]
+        )
+        headers_resp = self.client.post(
+            "/api/v1/uploads/headers/",
+            {"file": excel_file},
+            format="multipart",
+        )
+        self.assertEqual(headers_resp.status_code, 200)
+        self.assertEqual(
+            headers_resp.data["data"]["column_samples"]["Fecha_Vuelo_Contratista"],
+            ["2026-10-25"],
+        )
+        self.assertEqual(
+            headers_resp.data["data"]["preview_rows"][0]["data"]["Telefono_Extra"],
+            "987654321",
+        )
+
+        excel_file.seek(0)
+        process_resp = self.client.post(
+            "/api/v1/uploads/process/",
+            {
+                "file": excel_file,
+                "mapping": (
+                    '{"map_rut": "Doc_Identidad", '
+                    '"map_nombre": "Nombres_Pasajero", '
+                    '"map_fecha_vuelo": "Fecha_Vuelo_Contratista"}'
+                ),
+            },
+            format="multipart",
+        )
+        self.assertEqual(process_resp.status_code, 200)
+        rec = RegistroViaje.objects.get()
+        self.assertEqual(rec.payload_datos["fecha_vuelo"], "2026-10-25")
+        self.assertNotIn("Fecha_Vuelo_Contratista", rec.payload_datos)
+        self.assertEqual(rec.payload_datos["Telefono_Extra"], 987654321)
+        self.assertEqual(
+            process_resp.data["data"]["pipeline_trace"]["columnas_dinamicas_jsonb"],
+            ["Telefono_Extra"],
+        )

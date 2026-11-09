@@ -1,3 +1,5 @@
+from datetime import date, datetime
+import math
 from pathlib import Path
 from zipfile import BadZipFile
 
@@ -9,6 +11,31 @@ class FileProcessingError(ValueError):
 
 
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+
+
+def format_cell_preview(val):
+    if val is None or pd.isna(val):
+        return ""
+    if isinstance(val, datetime):
+        if (
+            val.hour == 0
+            and val.minute == 0
+            and val.second == 0
+            and val.microsecond == 0
+        ):
+            return val.date().isoformat()
+        return val.isoformat(sep=" ")
+    if isinstance(val, date):
+        return val.isoformat()
+    if isinstance(val, float):
+        if math.isnan(val):
+            return ""
+        if val.is_integer():
+            return str(int(val))
+    text = str(val).strip()
+    if len(text) == 19 and (text.endswith(" 00:00:00") or text.endswith("T00:00:00")):
+        return text[:10]
+    return text
 
 
 def _validate_file(uploaded_file, allowed_extensions):
@@ -56,7 +83,7 @@ def inspect_excel(uploaded_file):
         samples = []
         series = dataframe[col].dropna()
         for val in series:
-            val_str = str(val).strip()
+            val_str = format_cell_preview(val)
             if val_str and val_str not in samples:
                 samples.append(val_str)
             if len(samples) >= 3:
@@ -68,7 +95,7 @@ def inspect_excel(uploaded_file):
         row_dict = {}
         for col in columns:
             val = row.get(col)
-            row_dict[col] = "" if pd.isna(val) or val is None else str(val).strip()
+            row_dict[col] = format_cell_preview(val)
         preview_rows.append({"fila": idx + 2, "data": row_dict})
 
     non_empty_rows_count = int((~dataframe.isna().all(axis=1)).sum())

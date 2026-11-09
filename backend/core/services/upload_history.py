@@ -56,6 +56,18 @@ def get_upload_history(user, page=1, page_size=25):
     }
 
 
+def _clean_display_val(val):
+    if (
+        isinstance(val, str)
+        and len(val) == 19
+        and (val.endswith(" 00:00:00") or val.endswith("T00:00:00"))
+    ):
+        return val[:10]
+    if isinstance(val, float) and val.is_integer():
+        return int(val)
+    return val
+
+
 def get_upload_detail(user, batch_id):
     batch = LoteCarga.objects.filter(cargador=user, id=batch_id).first()
     if batch is None:
@@ -78,10 +90,20 @@ def get_upload_detail(user, batch_id):
         if not sample_token and rut_token:
             sample_token = f"{rut_token[:12]}..."
 
+        fecha_vuelo = payload.get("fecha_vuelo")
         datos_dinamicos = {}
         for key, val in payload.items():
-            if key not in ("rut_cifrado", "nombre_cifrado", "faena"):
-                datos_dinamicos[key] = val
+            if key not in ("rut_cifrado", "nombre_cifrado", "faena", "fecha_vuelo"):
+                cleaned_val = _clean_display_val(val)
+                if fecha_vuelo is None and key.strip().lower() in (
+                    "fecha_vuelo",
+                    "fecha vuelo",
+                    "fecha_viaje",
+                    "fecha viaje",
+                    "fecha",
+                ):
+                    fecha_vuelo = cleaned_val
+                datos_dinamicos[key] = cleaned_val
                 if key not in seen_cols:
                     seen_cols.add(key)
                     dynamic_cols.append(key)
@@ -93,6 +115,7 @@ def get_upload_detail(user, batch_id):
                 "fecha_procesamiento": record.fecha_procesamiento.isoformat(),
                 "estado_validacion": record.estado_validacion,
                 "faena": payload.get("faena") or "Sin asignar",
+                "fecha_vuelo": _clean_display_val(fecha_vuelo) or "—",
                 "rut_cifrado_preview": (
                     f"{rut_token[:14]}..." if rut_token else "gAAAAAB..."
                 ),
@@ -149,6 +172,7 @@ def get_upload_detail(user, batch_id):
                 "fila": item["fila_origen"],
                 "estado_fila": "APROBADO",
                 "faena": item["faena"],
+                "fecha_vuelo": item["fecha_vuelo"],
                 "rut_cifrado_preview": item["rut_cifrado_preview"],
                 "nombre_cifrado_preview": item["nombre_cifrado_preview"],
                 "datos_dinamicos": item["datos_dinamicos"],
@@ -165,6 +189,7 @@ def get_upload_detail(user, batch_id):
                 "fila": err.get("fila", 0),
                 "estado_fila": "RECHAZADO",
                 "faena": "—",
+                "fecha_vuelo": "—",
                 "rut_cifrado_preview": "No persistido",
                 "nombre_cifrado_preview": "No persistido",
                 "datos_dinamicos": {},
