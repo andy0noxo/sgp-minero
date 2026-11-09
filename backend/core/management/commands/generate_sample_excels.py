@@ -4,6 +4,8 @@ import pandas as pd
 from django.core.management.base import BaseCommand
 
 from core.management.commands.seed_demo_data import (
+    DEMO_COST_CENTERS,
+    DEMO_FAENAS,
     DEMO_MASTER_ROW_COUNT,
     DEMO_NAMES,
     _rut_for_number,
@@ -16,12 +18,16 @@ def _get_seeded_workers():
     for index in range(DEMO_MASTER_ROW_COUNT):
         rut = _rut_for_number(20000000 + index)
         nombre = f"{DEMO_NAMES[index % len(DEMO_NAMES)]} Demo {index + 1}"
+        faena = DEMO_FAENAS[index % len(DEMO_FAENAS)]
+        centro_costo = DEMO_COST_CENTERS[index % len(DEMO_COST_CENTERS)]
         habilitado = index % 4 != 0
         workers.append(
             {
                 "index": index,
                 "rut": rut,
                 "nombre": nombre,
+                "faena": faena,
+                "centro_costo": centro_costo,
                 "habilitado": habilitado,
             }
         )
@@ -61,6 +67,37 @@ class Command(BaseCommand):
         disabled_workers = [w for w in workers if not w["habilitado"]]
 
         files_created = []
+
+        # ------------------------------------------------------------------
+        # ARCHIVO 0 (ADMINISTRADOR): Maestro_Personas (75 trabajadores)
+        # Columnas oficiales: rut, nombre_completo, faena, centro_costo,
+        # estado_habilitacion. Permite poblar o sincronizar la tabla maestra
+        # desde el rol Administrador y garantiza que los 5 Excel del Cargador
+        # entreguen exactamente los mismos resultados esperados.
+        # ------------------------------------------------------------------
+        rows_maestro = [
+            {
+                "rut": w["rut"],
+                "nombre_completo": w["nombre"],
+                "faena": w["faena"],
+                "centro_costo": w["centro_costo"],
+                "estado_habilitacion": (
+                    "Habilitado" if w["habilitado"] else "Inhabilitado"
+                ),
+            }
+            for w in workers
+        ]
+        df_maestro = pd.DataFrame(rows_maestro)
+        path_0_xlsx = (
+            target_dir / "00_Maestro_Personas_Administrador_75_trabajadores.xlsx"
+        )
+        path_0_csv = (
+            target_dir / "00_Maestro_Personas_Administrador_75_trabajadores.csv"
+        )
+        df_maestro.to_excel(path_0_xlsx, index=False)
+        df_maestro.to_csv(path_0_csv, index=False, encoding="utf-8-sig")
+        files_created.append((path_0_xlsx.name, len(rows_maestro)))
+        files_created.append((path_0_csv.name, len(rows_maestro)))
 
         # ------------------------------------------------------------------
         # ARCHIVO 1: 10 filas - Nombres estándar (Auto-detectados 9/9)

@@ -1,12 +1,20 @@
-# Set de 5 Archivos Excel de Prueba para el Rol Cargador (`SGP-Minero`)
+# Set de Archivos Excel de Prueba (`Administrador` + `Cargador`) — `SGP-Minero`
 
-Este directorio contiene **5 planillas Excel (`.xlsx`)** diseñadas para probar de extremo a extremo el **Asistente de Carga de Nóminas de Pasajes (`/cargar`)** y la vista **Mis Cargas (`/historial`)** del rol **Cargador**.
-
-Cada archivo fue generado contra los **75 trabajadores oficiales** precargados en `Maestro_Personas` por el comando `python manage.py seed_demo_data`, de modo que las filas válidas cruzan exitosamente e inyectan automáticamente **`Estado de Habilitación`**, **`Faena Minera`** y **`Centro de Costo`**, mientras que las filas con errores controlados activan las reglas de negocio del motor validador (`INVALID_RUT`, `PERSON_INACTIVE`, `IDENTITY_MISMATCH` y `PERSON_NOT_FOUND`).
+Este directorio contiene tanto la **planilla maestra de trabajadores (`Maestro_Personas`) para el rol Administrador** como las **5 planillas Excel (`.xlsx`) de nóminas de pasajes para el rol Cargador**.
 
 ---
 
-## Resumen de los 5 Archivos de Prueba
+## 1. Archivo para el Rol `Administrador` (`Mantenedor Masivo de Personas` en `/carga`)
+
+| Archivo | Formato | Filas | Columnas Oficiales | Uso y Resultado Esperado |
+| :--- | :-: | :-: | :--- | :--- |
+| **`00_Maestro_Personas_Administrador_75_trabajadores.xlsx`**<br>**`00_Maestro_Personas_Administrador_75_trabajadores.csv`** | `.xlsx` / `.csv` | **75** | `rut`, `nombre_completo`, `faena`, `centro_costo`, `estado_habilitacion` | Contiene exactamente a los **75 trabajadores** (`56 Habilitados` y `19 Inhabilitados`, repartidos en `Faena Cordillera`, `Faena Norte` y `Faena Central` y centros de costo `MINA-01`..`MINA-05`) contra los cuales se validan los 5 archivos Excel del rol **Cargador**.<br>• Si la tabla `Maestro_Personas` estaba vacía (`SEED_DEMO_MASTER_DATA=False` o en Producción): crea **`75 Nuevos Creados · 0 Actualizados · 0 Rechazados`**.<br>• Si ya tenía el seed local activo (`SEED_DEMO_MASTER_DATA=True`): ejecuta `UPSERT` mostrando **`0 Nuevos Creados · 75 Actualizados · 0 Rechazados`**. |
+
+---
+
+## 2. Los 5 Archivos para el Rol `Cargador` (`Asistente de Carga de Pasajes` en `/carga`)
+
+Cada uno de estos 5 archivos cruza contra los 75 trabajadores de `00_Maestro_Personas_Administrador_75_trabajadores.xlsx`, de modo que las filas válidas inyectan automáticamente **`Estado de Habilitación`**, **`Faena Minera`** y **`Centro de Costo`**, y las filas con errores controlados activan las reglas de validación (`INVALID_RUT`, `PERSON_INACTIVE`, `IDENTITY_MISMATCH` y `PERSON_NOT_FOUND`).
 
 | # | Archivo `.xlsx` | Total Filas | Filas Aprobadas | Filas Rechazadas | Modalidad de Fecha de Vuelo | Columnas Auto-Detectadas (Nombre Estándar) | Columnas para Asignar Manualmente | Columnas Estándar en Blanco (`—`) | Columnas Extra → `JSONB` |
 | :- | :--- | :-: | :-: | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -20,7 +28,7 @@ Cada archivo fue generado contra los **75 trabajadores oficiales** precargados e
 
 ## Regeneración Automática del Set de Prueba
 
-Si en cualquier momento deseas regenerar los 5 archivos Excel de prueba desde el código fuente, ejecuta:
+Si en cualquier momento deseas regenerar todos los archivos desde el código fuente, ejecuta:
 
 ```bash
 docker compose exec backend python manage.py generate_sample_excels --output-dir /app/_archivos_prueba
