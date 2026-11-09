@@ -34,15 +34,70 @@ function getFlightDate(record) {
   return matchingKey ? cleanDateString(data[matchingKey]) : '—';
 }
 
+const RESERVED_DASHBOARD_KEYS = new Set([
+  'rut',
+  'nombre_completo',
+  'faena',
+  'centro_costo',
+  'estado_habilitacion',
+  'fecha_vuelo',
+  'tipo_fecha_vuelo',
+  'origen',
+  'destino',
+  'aerolinea',
+  'turno',
+  'telefono_contacto',
+  'anotaciones',
+]);
+
+function getExtraJsonbSummary(record) {
+  const data = record.datos || {};
+  const extras = Object.entries(data).filter(
+    ([k, v]) => !RESERVED_DASHBOARD_KEYS.has(k) && v !== null && v !== undefined && v !== ''
+  );
+  if (!extras.length) return '—';
+  return extras.map(([k, v]) => `${k}: ${cleanDateString(v)}`).join(' · ');
+}
+
 function exportCsv(records) {
-  const headers = ['Archivo', 'Fila Excel', 'RUT', 'Nombre', 'Faena', 'Fecha vuelo', 'Estado', 'Cargador responsable', 'Procesamiento'];
+  const headers = [
+    'Archivo',
+    'Fila Excel',
+    'RUT',
+    'Nombre',
+    'Estado Habilitacion',
+    'Faena',
+    'Centro Costo',
+    'Fecha vuelo',
+    'Modalidad Fecha',
+    'Origen',
+    'Destino',
+    'Aerolinea',
+    'Turno',
+    'Telefono',
+    'Anotaciones',
+    'Extras JSONB',
+    'Estado',
+    'Cargador responsable',
+    'Procesamiento',
+  ];
   const rows = records.map((record) => [
     record.nombre_archivo_origen,
     record.fila_origen,
     record.datos?.rut || '—',
     record.datos?.nombre_completo || '—',
+    record.datos?.estado_habilitacion || 'Habilitado',
     record.datos?.faena || '—',
+    record.datos?.centro_costo || 'General',
     getFlightDate(record),
+    record.datos?.tipo_fecha_vuelo || '—',
+    record.datos?.origen || '—',
+    record.datos?.destino || '—',
+    record.datos?.aerolinea || '—',
+    record.datos?.turno || '—',
+    record.datos?.telefono_contacto || '—',
+    record.datos?.anotaciones || '—',
+    getExtraJsonbSummary(record),
     record.estado_validacion,
     record.cargador_responsable,
     record.fecha_procesamiento,
@@ -117,17 +172,58 @@ export default function DashboardView({ faena: propFaena }) {
       <div className="border border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-black/20">
         {loading ? <p className="p-6 text-sm text-slate-400">Cargando registros...</p> : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900 text-slate-400 uppercase tracking-wider"><tr><th className="p-3 font-medium">Archivo</th><th className="p-3 font-medium">Fila</th><th className="p-3 font-medium">RUT</th><th className="p-3 font-medium">Nombre</th><th className="p-3 font-medium">Faena</th><th className="p-3 font-medium">Fecha vuelo</th><th className="p-3 font-medium">Estado</th><th className="p-3 font-medium">Cargador</th><th className="p-3 font-medium">Procesamiento</th></tr></thead>
+            <table className="w-full text-left text-xs text-slate-300 whitespace-nowrap">
+              <thead className="bg-slate-900 text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="p-3 font-medium">Archivo</th>
+                  <th className="p-3 font-medium">Fila</th>
+                  <th className="p-3 font-medium text-amber-400">RUT</th>
+                  <th className="p-3 font-medium text-sky-400">Nombre</th>
+                  <th className="p-3 font-medium text-emerald-400">Habilitación</th>
+                  <th className="p-3 font-medium text-emerald-400">Faena</th>
+                  <th className="p-3 font-medium text-emerald-400">Centro Costo</th>
+                  <th className="p-3 font-medium text-emerald-400">Fecha vuelo</th>
+                  <th className="p-3 font-medium">Origen</th>
+                  <th className="p-3 font-medium">Destino</th>
+                  <th className="p-3 font-medium">Aerolínea</th>
+                  <th className="p-3 font-medium">Turno</th>
+                  <th className="p-3 font-medium">Teléfono</th>
+                  <th className="p-3 font-medium">Anotaciones</th>
+                  <th className="p-3 font-medium text-amber-300">Extras JSONB</th>
+                  <th className="p-3 font-medium">Estado</th>
+                  <th className="p-3 font-medium">Cargador</th>
+                  <th className="p-3 font-medium">Procesamiento</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-slate-800">
                 {result.results.map((record) => (
                   <tr key={record.id} className="hover:bg-slate-800/40 transition-colors">
                     <td className="p-3">{record.nombre_archivo_origen}</td>
                     <td className="p-3 font-mono">#{record.fila_origen}</td>
-                    <td className="p-3 font-mono">{record.datos?.rut || '—'}</td>
+                    <td className="p-3 font-mono text-amber-300">{record.datos?.rut || '—'}</td>
                     <td className="p-3 font-medium text-slate-200">{record.datos?.nombre_completo || '—'}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-semibold">
+                        ✓ {record.datos?.estado_habilitacion || 'Habilitado'}
+                      </span>
+                    </td>
                     <td className="p-3">{record.datos?.faena || '—'}</td>
-                    <td className="p-3">{getFlightDate(record)}</td>
+                    <td className="p-3 font-mono text-[11px]">{record.datos?.centro_costo || 'General'}</td>
+                    <td className="p-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-mono text-emerald-300 font-semibold">{getFlightDate(record)}</span>
+                        {record.datos?.tipo_fecha_vuelo && (
+                          <span className="text-[9px] text-slate-400">{record.datos.tipo_fecha_vuelo}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3">{cleanDateString(record.datos?.origen)}</td>
+                    <td className="p-3">{cleanDateString(record.datos?.destino)}</td>
+                    <td className="p-3">{cleanDateString(record.datos?.aerolinea)}</td>
+                    <td className="p-3">{cleanDateString(record.datos?.turno)}</td>
+                    <td className="p-3 font-mono text-[11px]">{cleanDateString(record.datos?.telefono_contacto)}</td>
+                    <td className="p-3">{cleanDateString(record.datos?.anotaciones)}</td>
+                    <td className="p-3 font-mono text-[11px] text-amber-200/90">{getExtraJsonbSummary(record)}</td>
                     <td className="p-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${record.estado_validacion === 'APROBADO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
                         {record.estado_validacion}

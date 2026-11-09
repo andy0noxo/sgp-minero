@@ -230,3 +230,54 @@ class UploadApiTests(TestCase):
             process_resp.data["data"]["pipeline_trace"]["columnas_dinamicas_jsonb"],
             ["Telefono_Extra"],
         )
+
+    @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
+    def test_process_maps_optional_mining_columns_master_fields_and_extra_jsonb(self):
+        excel_file = excel_upload(
+            [
+                {
+                    "RUN_Operario": "12345678-5",
+                    "Pasajero": "María Pérez",
+                    "Tramo_Fecha": "2026-11-20 Charter LA-901 07:15",
+                    "Ciudad_Salida": "SCL",
+                    "Aerodromo_Destino": "CJC",
+                    "Turno_Rotativo": "7x7",
+                    "Codigo_PNR_Extra": "PNR-9988",
+                }
+            ]
+        )
+        process_resp = self.client.post(
+            "/api/v1/uploads/process/",
+            {
+                "file": excel_file,
+                "mapping": (
+                    '{"map_rut": "RUN_Operario", '
+                    '"map_nombre": "Pasajero", '
+                    '"map_fecha_vuelo": "Tramo_Fecha", '
+                    '"map_origen": "Ciudad_Salida", '
+                    '"map_destino": "Aerodromo_Destino", '
+                    '"map_turno": "Turno_Rotativo"}'
+                ),
+            },
+            format="multipart",
+        )
+        self.assertEqual(process_resp.status_code, 200)
+        rec = RegistroViaje.objects.get()
+        self.assertEqual(rec.payload_datos["faena"], "Faena Cordillera")
+        self.assertEqual(rec.payload_datos["centro_costo"], "MINA-01")
+        self.assertEqual(rec.payload_datos["estado_habilitacion"], "Habilitado")
+        self.assertEqual(
+            rec.payload_datos["fecha_vuelo"], "2026-11-20 Charter LA-901 07:15"
+        )
+        self.assertEqual(
+            rec.payload_datos["tipo_fecha_vuelo"],
+            "Vuelo Chárter / Comercial asignado",
+        )
+        self.assertEqual(rec.payload_datos["origen"], "SCL")
+        self.assertEqual(rec.payload_datos["destino"], "CJC")
+        self.assertEqual(rec.payload_datos["turno"], "7x7")
+        self.assertEqual(rec.payload_datos["Codigo_PNR_Extra"], "PNR-9988")
+        self.assertEqual(
+            process_resp.data["data"]["pipeline_trace"]["columnas_dinamicas_jsonb"],
+            ["Codigo_PNR_Extra"],
+        )

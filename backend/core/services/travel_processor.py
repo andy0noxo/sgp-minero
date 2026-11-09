@@ -9,10 +9,23 @@ from django.utils import timezone
 
 from core.models import LoteCarga, Maestro_Personas, RegistroAuditoria, RegistroViaje
 from core.services.encryption import encrypt_pii
-from core.services.excel_reader import FileProcessingError, read_rows
+from core.services.excel_reader import (
+    FileProcessingError,
+    classify_flight_date,
+    read_rows,
+)
 from core.services.identity_matcher import find_matching_person
 from core.services.mapper import MapperValidationError, validate_mapper
 from core.services.rut_validator import RutValidationError, validate_rut
+
+OPTIONAL_FIELD_TO_PAYLOAD_KEY = {
+    "map_origen": "origen",
+    "map_destino": "destino",
+    "map_aerolinea": "aerolinea",
+    "map_turno": "turno",
+    "map_telefono": "telefono_contacto",
+    "map_anotaciones": "anotaciones",
+}
 
 
 def _json_value(value):
@@ -153,9 +166,21 @@ def process_travel_file(uploaded_file, mapping, user):
 
             mapped_fecha_col = mapping.get("map_fecha_vuelo")
             if mapped_fecha_col:
-                fecha_vuelo_val = _json_value(row.get(mapped_fecha_col))
+                raw_fecha = row.get(mapped_fecha_col)
                 payload.pop(mapped_fecha_col, None)
-                payload["fecha_vuelo"] = fecha_vuelo_val
+                fecha_norm, tipo_fecha = classify_flight_date(raw_fecha)
+                payload["fecha_vuelo"] = fecha_norm or None
+                payload["tipo_fecha_vuelo"] = tipo_fecha
+
+            for (
+                opt_map_key,
+                target_payload_key,
+            ) in OPTIONAL_FIELD_TO_PAYLOAD_KEY.items():
+                mapped_col = mapping.get(opt_map_key)
+                if mapped_col:
+                    val = _json_value(row.get(mapped_col))
+                    payload.pop(mapped_col, None)
+                    payload[target_payload_key] = val
 
             cifrado_rut = encrypt_pii(normalized_rut)
             cifrado_nombre = encrypt_pii(person.nombre_completo)
@@ -167,6 +192,10 @@ def process_travel_file(uploaded_file, mapping, user):
                     "rut_cifrado": cifrado_rut,
                     "nombre_cifrado": cifrado_nombre,
                     "faena": person.faena,
+                    "centro_costo": person.centro_costo,
+                    "estado_habilitacion": (
+                        "Habilitado" if person.estado_habilitacion else "Inhabilitado"
+                    ),
                 }
             )
             records_to_create.append(
@@ -185,15 +214,7 @@ def process_travel_file(uploaded_file, mapping, user):
         if records_to_create:
             RegistroViaje.objects.bulk_create(records_to_create, batch_size=1000)
 
-        mapped_columns_set = {
-            col
-            for col in (
-                mapping.get("map_rut"),
-                mapping.get("map_nombre"),
-                mapping.get("map_fecha_vuelo"),
-            )
-            if col
-        }
+        mapped_columns_set = set(mapping.values())
         dynamic_cols = [
             str(col) for col in dataframe.columns if col not in mapped_columns_set
         ]

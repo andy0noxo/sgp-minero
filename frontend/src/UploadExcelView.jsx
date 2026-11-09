@@ -29,6 +29,174 @@ function cleanDisplayValue(val) {
   return text;
 }
 
+export function classifyFlightDateClient(val) {
+  const raw = cleanDisplayValue(val);
+  if (!raw || raw === '—') {
+    return { normalized: '—', formatType: 'No informada' };
+  }
+  const lower = raw.toLowerCase();
+
+  if (
+    lower.includes(' al ') ||
+    lower.includes('ida') ||
+    lower.includes('regreso') ||
+    lower.includes('vuelta') ||
+    /\d{2,4}[-/]\d{2}[-/]\d{2,4}\s*[-–/]\s*\d{2,4}[-/]\d{2}[-/]\d{2,4}/.test(raw)
+  ) {
+    return { normalized: raw, formatType: 'Ciclo Ida y Regreso (Turno)' };
+  }
+
+  if (
+    lower.includes('charter') ||
+    lower.includes('chárter') ||
+    lower.includes('vuelo') ||
+    /\b(la|sky|ja|h2)[-\s]?\d{2,4}\b/i.test(raw)
+  ) {
+    return { normalized: raw, formatType: 'Vuelo Chárter / Comercial asignado' };
+  }
+
+  if (/\b(am|pm|mañana|manana|tarde|noche|diurno|nocturno)\b/i.test(raw)) {
+    return { normalized: raw, formatType: 'Solicitud por tramo horario (AM/PM)' };
+  }
+
+  const dtIso = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}:\d{2})(?::\d{2})?$/);
+  if (dtIso) {
+    const [, y, m, d, hhmm] = dtIso;
+    if (hhmm === '00:00') {
+      return { normalized: `${y}-${m}-${d}`, formatType: 'Solicitud de emisión (Solo fecha)' };
+    }
+    return {
+      normalized: `${y}-${m}-${d} ${hhmm}`,
+      formatType: 'Vuelo comercial/chárter (Fecha y hora)',
+    };
+  }
+
+  const dtCl = raw.match(/^(\d{2})[/-](\d{2})[/-](\d{4})\s+(\d{2}:\d{2})(?::\d{2})?$/);
+  if (dtCl) {
+    const [, d, m, y, hhmm] = dtCl;
+    if (hhmm === '00:00') {
+      return { normalized: `${y}-${m}-${d}`, formatType: 'Solicitud de emisión (Solo fecha)' };
+    }
+    return {
+      normalized: `${y}-${m}-${d} ${hhmm}`,
+      formatType: 'Vuelo comercial/chárter (Fecha y hora)',
+    };
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return { normalized: raw, formatType: 'Solicitud de emisión (Solo fecha)' };
+  }
+
+  const dClOnly = raw.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+  if (dClOnly) {
+    const [, d, m, y] = dClOnly;
+    return { normalized: `${y}-${m}-${d}`, formatType: 'Solicitud de emisión (Solo fecha)' };
+  }
+
+  return { normalized: raw, formatType: 'Formato de fecha de contratista' };
+}
+
+const INITIAL_MAPPING = {
+  map_rut: '',
+  map_nombre: '',
+  map_fecha_vuelo: '',
+  map_origen: '',
+  map_destino: '',
+  map_aerolinea: '',
+  map_turno: '',
+  map_telefono: '',
+  map_anotaciones: '',
+};
+
+const STANDARD_HEADER_ALIASES = {
+  map_rut: new Set(['rut', 'rut_pasajero', 'rut pasajero', 'rut_trabajador', 'rut trabajador']),
+  map_nombre: new Set([
+    'nombre_completo',
+    'nombre completo',
+    'nombre_trabajador',
+    'nombre trabajador',
+    'nombre_pasajero',
+    'nombre pasajero',
+    'nombre',
+  ]),
+  map_fecha_vuelo: new Set(['fecha_vuelo', 'fecha vuelo', 'fecha_de_vuelo', 'fecha de vuelo']),
+  map_origen: new Set(['origen', 'origen_vuelo', 'aeropuerto_origen']),
+  map_destino: new Set(['destino', 'destino_vuelo', 'aeropuerto_destino']),
+  map_aerolinea: new Set(['aerolinea', 'aerolínea', 'aerolinea_vuelo']),
+  map_turno: new Set(['turno', 'turno_trabajo', 'jornada_turno']),
+  map_telefono: new Set([
+    'telefono_contacto',
+    'teléfono_contacto',
+    'telefono contacto',
+    'teléfono contacto',
+    'telefono',
+    'teléfono',
+  ]),
+  map_anotaciones: new Set(['anotaciones', 'observaciones', 'notas']),
+};
+
+function autoDetectStandardColumns(headersList) {
+  const detected = { ...INITIAL_MAPPING };
+  const usedHeaders = new Set();
+
+  Object.entries(STANDARD_HEADER_ALIASES).forEach(([fieldKey, aliasSet]) => {
+    const match = headersList.find(
+      (h) => !usedHeaders.has(h) && aliasSet.has(String(h).trim().toLowerCase())
+    );
+    if (match) {
+      detected[fieldKey] = match;
+      usedHeaders.add(match);
+    }
+  });
+
+  return detected;
+}
+
+const OPTIONAL_TRAVEL_FIELDS = [
+  {
+    key: 'map_origen',
+    label: 'Origen (SCL / Ciudad)',
+    shortLabel: 'Origen',
+    badge: '🛫 Ruta Origen',
+    desc: 'Ciudad o aeropuerto de salida (ej: SCL, IQQ, CCP, LSC).',
+  },
+  {
+    key: 'map_destino',
+    label: 'Destino (CJC / ANF / Faena)',
+    shortLabel: 'Destino',
+    badge: '🛬 Ruta Destino',
+    desc: 'Aeropuerto o aeródromo de destino minero (ej: CJC Calama, ANF Antofagasta).',
+  },
+  {
+    key: 'map_aerolinea',
+    label: 'Aerolínea (LATAM / SKY / Chárter)',
+    shortLabel: 'Aerolínea',
+    badge: '✈️ Operador Aéreo',
+    desc: 'Línea aérea comercial o servicio de vuelo chárter asignado.',
+  },
+  {
+    key: 'map_turno',
+    label: 'Turno (7x7 / 14x14 / 4x3)',
+    shortLabel: 'Turno',
+    badge: '🔄 Régimen Turno',
+    desc: 'Sistema de jornada rotativa minera autorizada por contrato.',
+  },
+  {
+    key: 'map_telefono',
+    label: 'Teléfono de Contacto',
+    shortLabel: 'Teléfono',
+    badge: '📱 Contacto',
+    desc: 'Teléfono móvil del pasajero para envío de boarding pass o alertas.',
+  },
+  {
+    key: 'map_anotaciones',
+    label: 'Anotaciones / Observaciones',
+    shortLabel: 'Anotaciones',
+    badge: '📝 Glosa / Notas',
+    desc: 'Requerimientos de equipaje, coordinación de bus o notas operativas.',
+  },
+];
+
 export default function UploadExcelView({ role }) {
   const isAdmin = role === 'Administrador';
   const { faena } = useOutletContext();
@@ -39,7 +207,8 @@ export default function UploadExcelView({ role }) {
   const [fileSummary, setFileSummary] = useState(null);
   const [columnSamples, setColumnSamples] = useState({});
   const [previewRows, setPreviewRows] = useState([]);
-  const [mapping, setMapping] = useState({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
+  const [mapping, setMapping] = useState(INITIAL_MAPPING);
+  const [autoDetectedFields, setAutoDetectedFields] = useState({});
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
@@ -61,7 +230,8 @@ export default function UploadExcelView({ role }) {
     setFileSummary(null);
     setColumnSamples({});
     setPreviewRows([]);
-    setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
+    setMapping(INITIAL_MAPPING);
+    setAutoDetectedFields({});
     setResult(null);
     setCurrentStep(1);
     setError(message);
@@ -107,7 +277,8 @@ export default function UploadExcelView({ role }) {
     setFileSummary(null);
     setColumnSamples({});
     setPreviewRows([]);
-    setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
+    setMapping(INITIAL_MAPPING);
+    setAutoDetectedFields({});
     setResult(null);
     setCurrentStep(1);
     setError('');
@@ -124,7 +295,8 @@ export default function UploadExcelView({ role }) {
     setFileSummary(null);
     setColumnSamples({});
     setPreviewRows([]);
-    setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
+    setMapping(INITIAL_MAPPING);
+    setAutoDetectedFields({});
     setResult(null);
     setCurrentStep(1);
     setError('');
@@ -139,11 +311,14 @@ export default function UploadExcelView({ role }) {
     try {
       const response = await getUploadHeaders(file);
       const data = response.data || {};
-      setHeaders(data.headers || []);
+      const detectedHeaders = data.headers || [];
+      const detectedMap = autoDetectStandardColumns(detectedHeaders);
+      setHeaders(detectedHeaders);
       setFileSummary(data.file_summary || null);
       setColumnSamples(data.column_samples || {});
       setPreviewRows(data.preview_rows || []);
-      setMapping({ map_rut: '', map_nombre: '', map_fecha_vuelo: '' });
+      setMapping(detectedMap);
+      setAutoDetectedFields(detectedMap);
       setCurrentStep(2);
     } catch (requestError) {
       setError(requestError.message);
@@ -166,6 +341,11 @@ export default function UploadExcelView({ role }) {
           ? { map_fecha_vuelo: mapping.map_fecha_vuelo }
           : {}),
       };
+      OPTIONAL_TRAVEL_FIELDS.forEach(({ key }) => {
+        if (mapping[key] && mapping[key] !== '__NONE__') {
+          payloadMapping[key] = mapping[key];
+        }
+      });
       const response = isAdmin ? await importMasterPeople(file) : await processUpload(file, payloadMapping);
       setResult(response.data);
       if (isAdmin) {
@@ -212,6 +392,9 @@ export default function UploadExcelView({ role }) {
     mapping.map_rut,
     mapping.map_nombre,
     mapping.map_fecha_vuelo && mapping.map_fecha_vuelo !== '__NONE__' ? mapping.map_fecha_vuelo : null,
+    ...OPTIONAL_TRAVEL_FIELDS.map(({ key }) =>
+      mapping[key] && mapping[key] !== '__NONE__' ? mapping[key] : null
+    ),
   ].filter(Boolean);
   const isSameColumnSelected = new Set(selectedRealColumns).size !== selectedRealColumns.length;
   const isMappingValid = Boolean(isMappingComplete && !isSameColumnSelected);
@@ -219,9 +402,8 @@ export default function UploadExcelView({ role }) {
 
   const activeFechaCol =
     mapping.map_fecha_vuelo && mapping.map_fecha_vuelo !== '__NONE__' ? mapping.map_fecha_vuelo : '';
-  const dynamicColumns = headers.filter(
-    (h) => h !== mapping.map_rut && h !== mapping.map_nombre && h !== activeFechaCol
-  );
+  const mappedHeadersSet = new Set(selectedRealColumns);
+  const dynamicColumns = headers.filter((h) => !mappedHeadersSet.has(h));
 
   const stepperSteps = [
     { num: 1, title: '1. Archivo Excel', desc: 'Subida e inspección' },
@@ -535,7 +717,7 @@ export default function UploadExcelView({ role }) {
               <div>
                 <h3 className="text-sm font-bold text-white">Comparador de Encabezados (Esquema vs Excel)</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Empareja los campos obligatorios del sistema observando las muestras reales leídas directamente de la planilla.
+                  Las columnas con nombre estándar se auto-detectan; las columnas con nombres de contratista se emparejan manualmente o se dejan en blanco si no existen.
                 </p>
               </div>
               <span
@@ -549,195 +731,361 @@ export default function UploadExcelView({ role }) {
               </span>
             </div>
 
-            {/* Panel Comparativo 3 Columnas del Esquema de Pasajes */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Bloque RUT */}
-              <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span className="text-amber-400">*</span> Campo 1: RUT Pasajero
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
-                    🔒 Cifrado AES-128
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Identificador chileno del trabajador minero. Se sanitiza, se valida matemáticamente con Módulo 11 y se cifra con Fernet.
-                </p>
-                <div>
-                  <label className="text-[11px] text-slate-300 font-semibold block mb-1">
-                    Seleccionar columna de tu Excel:
-                  </label>
-                  <select
-                    value={mapping.map_rut}
-                    onChange={(e) => setMapping({ ...mapping, map_rut: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="">-- Elige la columna que contiene el RUT --</option>
-                    {headers.map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Muestras reales de la columna seleccionada */}
-                <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg">
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                    Muestras reales detectadas:
+            {/* Panel Comparativo 3 Columnas Troncales del Esquema de Pasajes */}
+            <div>
+              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🎯</span> 1. Campos Troncales de Identidad y Fecha de Vuelo
+              </h4>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Bloque RUT */}
+                <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center gap-1">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span className="text-amber-400">*</span> Campo 1: RUT Pasajero
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
+                      🔒 Cifrado AES-128
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Identificador chileno del trabajador minero. Se sanitiza, se valida matemáticamente con Módulo 11 y se cifra con Fernet.
                   </p>
-                  {mapping.map_rut && columnSamples[mapping.map_rut]?.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {columnSamples[mapping.map_rut].map((s, idx) => (
-                        <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
-                          {cleanDisplayValue(s)}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-slate-300 font-semibold">
+                        Seleccionar columna de tu Excel:
+                      </label>
+                      {mapping.map_rut && autoDetectedFields.map_rut === mapping.map_rut && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          Auto-detectado
                         </span>
-                      ))}
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-[11px] text-slate-500 italic">
-                      {mapping.map_rut ? 'Sin datos de muestra' : 'Selecciona una columna para ver sus valores reales'}
+                    <select
+                      value={mapping.map_rut}
+                      onChange={(e) => setMapping({ ...mapping, map_rut: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Elige la columna que contiene el RUT --</option>
+                      {headers.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Muestras reales de la columna seleccionada */}
+                  <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg">
+                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                      Muestras reales detectadas:
                     </p>
-                  )}
+                    {mapping.map_rut && columnSamples[mapping.map_rut]?.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {columnSamples[mapping.map_rut].map((s, idx) => (
+                          <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
+                            {cleanDisplayValue(s)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 italic">
+                        {mapping.map_rut ? 'Sin datos de muestra' : 'Selecciona una columna para ver sus valores reales'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bloque Nombre Completo */}
+                <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center gap-1">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span className="text-amber-400">*</span> Campo 2: Nombre Completo
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
+                      🔒 Cifrado AES-128
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Nombre del pasajero. Se estandariza en Unicode (sin tildes/espacios múltiples), se coteja con Maestro_Personas y se cifra.
+                  </p>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-slate-300 font-semibold">
+                        Seleccionar columna de tu Excel:
+                      </label>
+                      {mapping.map_nombre && autoDetectedFields.map_nombre === mapping.map_nombre && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          Auto-detectado
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      value={mapping.map_nombre}
+                      onChange={(e) => setMapping({ ...mapping, map_nombre: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Elige la columna con el Nombre Completo --</option>
+                      {headers.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Muestras reales de la columna seleccionada */}
+                  <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg">
+                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                      Muestras reales detectadas:
+                    </p>
+                    {mapping.map_nombre && columnSamples[mapping.map_nombre]?.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {columnSamples[mapping.map_nombre].map((s, idx) => (
+                          <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700">
+                            {cleanDisplayValue(s)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 italic">
+                        {mapping.map_nombre ? 'Sin datos de muestra' : 'Selecciona una columna para ver sus valores reales'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bloque Fecha de Vuelo */}
+                <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center gap-1">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span className="text-emerald-400">*</span> Campo 3: Fecha de Vuelo
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+                      ✈️ Multiformato Minero
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Acepta e identifica solicitudes de emisión (solo fecha), vuelos con hora, tramos AM/PM, vuelos chárter o ciclos ida/regreso.
+                  </p>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-slate-300 font-semibold">
+                        Seleccionar columna de tu Excel:
+                      </label>
+                      {mapping.map_fecha_vuelo && autoDetectedFields.map_fecha_vuelo === mapping.map_fecha_vuelo && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          Auto-detectado
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      value={mapping.map_fecha_vuelo}
+                      onChange={(e) => setMapping({ ...mapping, map_fecha_vuelo: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Elige la columna con la Fecha de Vuelo --</option>
+                      {headers.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                      <option value="__NONE__">Sin columna de Fecha de Vuelo en este archivo</option>
+                    </select>
+                  </div>
+                  {/* Muestras reales de la columna seleccionada + Clasificación */}
+                  <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg space-y-1.5">
+                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
+                      Muestras y modalidad detectada:
+                    </p>
+                    {activeFechaCol && columnSamples[activeFechaCol]?.length > 0 ? (
+                      <>
+                        <div className="flex flex-wrap gap-1.5">
+                          {columnSamples[activeFechaCol].map((s, idx) => {
+                            const info = classifyFlightDateClient(s);
+                            return (
+                              <span
+                                key={idx}
+                                className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700"
+                              >
+                                {info.normalized}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-emerald-400 font-medium">
+                          🏷️ Modalidad:{' '}
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                            {classifyFlightDateClient(columnSamples[activeFechaCol][0]).formatType}
+                          </span>
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 italic">
+                        {mapping.map_fecha_vuelo === '__NONE__'
+                          ? 'El archivo se procesará sin columna de Fecha de Vuelo'
+                          : activeFechaCol
+                            ? 'Sin datos de muestra'
+                            : 'Selecciona una columna para ver sus fechas reales'}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Bloque Nombre Completo */}
-              <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span className="text-amber-400">*</span> Campo 2: Nombre Completo
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
-                    🔒 Cifrado AES-128
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Nombre del pasajero. Se estandariza en Unicode (sin tildes/espacios múltiples), se coteja con Maestro_Personas y se cifra.
-                </p>
+            {/* Asignación Automática desde Maestro_Personas */}
+            <div className="p-3.5 bg-emerald-950/20 border border-emerald-500/25 rounded-xl flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <span className="text-base mt-0.5">🏛️</span>
                 <div>
-                  <label className="text-[11px] text-slate-300 font-semibold block mb-1">
-                    Seleccionar columna de tu Excel:
-                  </label>
-                  <select
-                    value={mapping.map_nombre}
-                    onChange={(e) => setMapping({ ...mapping, map_nombre: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="">-- Elige la columna con el Nombre Completo --</option>
-                    {headers.map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Muestras reales de la columna seleccionada */}
-                <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg">
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                    Muestras reales detectadas:
+                  <h4 className="text-xs font-bold text-emerald-300">
+                    Asignación Oficial desde Maestro_Personas (Sin Mapeo Manual)
+                  </h4>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Por seguridad operacional minera, <strong className="text-white">Estado de Habilitación</strong>,{' '}
+                    <strong className="text-white">Faena Minera</strong> y{' '}
+                    <strong className="text-white">Centro de Costo</strong> nunca se confían al Excel del contratista: el servidor los valida e inyecta directamente desde la tabla maestra oficial.
                   </p>
-                  {mapping.map_nombre && columnSamples[mapping.map_nombre]?.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {columnSamples[mapping.map_nombre].map((s, idx) => (
-                        <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700">
-                          {cleanDisplayValue(s)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-slate-500 italic">
-                      {mapping.map_nombre ? 'Sin datos de muestra' : 'Selecciona una columna para ver sus valores reales'}
-                    </p>
-                  )}
                 </div>
               </div>
+              <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
+                <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                  ✓ estado_habilitacion
+                </span>
+                <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                  ✓ faena
+                </span>
+                <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                  ✓ centro_costo
+                </span>
+              </div>
+            </div>
 
-              {/* Bloque Fecha de Vuelo */}
-              <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span className="text-emerald-400">*</span> Campo 3: Fecha de Vuelo
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
-                    ✈️ Dato de Pasaje
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Fecha programada del traslado o vuelo del trabajador. Se limpia de horas vacías y se estandariza como <span className="font-mono text-emerald-300">fecha_vuelo</span>.
-                </p>
+            {/* Panel de 6 Columnas Variables Estandarizadas (Opcionales) */}
+            <div className="space-y-3">
+              <div className="flex flex-wrap justify-between items-center gap-2">
                 <div>
-                  <label className="text-[11px] text-slate-300 font-semibold block mb-1">
-                    Seleccionar columna de tu Excel:
-                  </label>
-                  <select
-                    value={mapping.map_fecha_vuelo}
-                    onChange={(e) => setMapping({ ...mapping, map_fecha_vuelo: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="">-- Elige la columna con la Fecha de Vuelo --</option>
-                    {headers.map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                    <option value="__NONE__">Sin columna de Fecha de Vuelo en este archivo</option>
-                  </select>
-                </div>
-                {/* Muestras reales de la columna seleccionada */}
-                <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-lg">
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                    Muestras reales detectadas:
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <span>🧭</span> 2. Columnas Variables Típicas de Pasajes Mineros (Opcionales)
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                     Asígnalas si vienen en el Excel o déjalas en blanco si no existen. Todas forman parte de la estructura fija de la tabla para revisión.
                   </p>
-                  {activeFechaCol && columnSamples[activeFechaCol]?.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {columnSamples[activeFechaCol].map((s, idx) => (
-                        <span key={idx} className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700">
-                          {cleanDisplayValue(s)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-slate-500 italic">
-                      {mapping.map_fecha_vuelo === '__NONE__'
-                        ? 'El archivo se procesará sin columna de Fecha de Vuelo'
-                        : activeFechaCol
-                          ? 'Sin datos de muestra'
-                          : 'Selecciona una columna para ver sus fechas reales'}
-                    </p>
-                  )}
                 </div>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  {OPTIONAL_TRAVEL_FIELDS.filter((f) => Boolean(mapping[f.key])).length} de 6 asignadas
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {OPTIONAL_TRAVEL_FIELDS.map((field) => {
+                  const selectedCol = mapping[field.key] || '';
+                  const isAuto = Boolean(selectedCol && autoDetectedFields[field.key] === selectedCol);
+                  const samples = selectedCol ? columnSamples[selectedCol] || [] : [];
+
+                  return (
+                    <div
+                      key={field.key}
+                      className={`p-3.5 rounded-xl border space-y-2.5 transition-colors ${
+                        selectedCol
+                          ? 'bg-slate-950/70 border-sky-500/30'
+                          : 'bg-slate-950/40 border-slate-800/80'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center gap-1">
+                        <span className="text-xs font-bold text-white">{field.label}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/25 font-medium">
+                          {field.badge}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{field.desc}</p>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-[10px] text-slate-300 font-semibold">
+                            Columna en Excel:
+                          </label>
+                          {isAuto ? (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                              Auto-detectado
+                            </span>
+                          ) : selectedCol ? (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                              Asignado manual
+                            </span>
+                          ) : (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                              En blanco (—)
+                            </span>
+                          )}
+                        </div>
+                        <select
+                          value={selectedCol}
+                          onChange={(e) => setMapping({ ...mapping, [field.key]: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                        >
+                          <option value="">-- Dejar en blanco (No existe en este Excel) --</option>
+                          {headers.map((h) => (
+                            <option key={h} value={h}>
+                              {h}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="p-2 bg-slate-900/40 border border-slate-800 rounded-lg">
+                        {selectedCol && samples.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {samples.map((s, idx) => (
+                              <span
+                                key={idx}
+                                className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-sky-200 border border-slate-700"
+                              >
+                                {cleanDisplayValue(s)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-500 italic">
+                            {selectedCol
+                              ? 'Sin datos de muestra'
+                              : 'Se mostrará como "—" en la estructura de la tabla'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Alerta de columna idéntica */}
             {isSameColumnSelected && (
               <p className="p-3 bg-rose-950/40 border border-rose-900/60 rounded-lg text-xs text-rose-300 flex items-center gap-2">
-                <span>⚠️</span> Las columnas seleccionadas para RUT, Nombre Completo y Fecha de Vuelo deben ser distintas entre sí.
+                <span>⚠️</span> Cada columna del Excel solo puede asignarse a un campo del esquema (no puedes repetir la misma columna en dos campos).
               </p>
             )}
 
-            {/* Columnas Dinámicas preservadas en JSONB */}
+            {/* Columnas Extra no estandarizadas preservadas en JSONB */}
             <div className="p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">📦</span>
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Columnas Dinámicas Adicionales Detectadas ({dynamicColumns.length})
+                  3. Columnas Adicionales Fuera del Esquema Estándar → JSONB ({dynamicColumns.length})
                 </h4>
               </div>
               <p className="text-[11px] text-slate-400">
-                Estas columnas no se descartan: se empaquetarán y preservarán íntegramente en la estructura no normalizada <span className="font-mono text-amber-400">JSONB</span> de PostgreSQL para fines de reportería y auditoría.
+                Cualquier columna extra que no pertenezca a las columnas troncales o variables típicas se empaqueta automáticamente en el campo polimórfico <span className="font-mono text-amber-400">JSONB</span> de PostgreSQL sin perder trazabilidad.
               </p>
               {dynamicColumns.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {dynamicColumns.map((col) => (
-                    <span key={col} className="px-2.5 py-1 rounded bg-slate-800/90 text-[11px] text-slate-300 border border-slate-700">
+                    <span key={col} className="px-2.5 py-1 rounded bg-slate-800/90 text-[11px] text-amber-300 border border-amber-500/30 font-mono">
                       {col}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-slate-500 italic">No hay columnas dinámicas adicionales.</p>
+                <p className="text-[11px] text-slate-500 italic">
+                  Todas las columnas de este archivo están cubiertas por la estructura estándar de la tabla.
+                </p>
               )}
             </div>
 
@@ -775,7 +1123,7 @@ export default function UploadExcelView({ role }) {
               <div>
                 <h3 className="text-sm font-bold text-white">Previsualización de la Tabla Estandarizada a Subir</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Verifica cómo interpretará y estructurará el sistema la información antes de persistirla en la base de datos.
+                  Revisa la estructura completa de la tabla (obligatorias, cruce maestro, variables estándar y extras JSONB) para comprobar si la información está completa antes de confirmar.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-slate-400">
@@ -783,42 +1131,51 @@ export default function UploadExcelView({ role }) {
                   Mostrando {previewRows.length} filas de muestra
                 </span>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  Faena destino: {faena || 'Detectada automáticamente'}
+                  Cruce Maestro: Habilitación + Faena + C. Costo
                 </span>
               </div>
             </div>
 
-            {/* Tabla de previsualización */}
+            {/* Tabla de previsualización con estructura estándar fija + JSONB */}
             <div className="border border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-black/20">
               <div className="overflow-x-auto max-h-96">
                 <table className="w-full text-left text-xs text-slate-300 whitespace-nowrap">
                   <thead className="bg-slate-900 text-slate-400 uppercase tracking-wider sticky top-0 z-10 border-b border-slate-800">
                     <tr>
-                      <th className="p-3 w-16 font-mono text-slate-500"># Fila</th>
+                      <th className="p-3 w-14 font-mono text-slate-500"># Fila</th>
                       <th className="p-3 font-semibold text-amber-400">
-                        RUT (Col: {mapping.map_rut})
+                        RUT ({mapping.map_rut})
                       </th>
                       <th className="p-3 font-semibold text-sky-400">
-                        Nombre Completo (Col: {mapping.map_nombre})
+                        Nombre Completo ({mapping.map_nombre})
                       </th>
-                      {activeFechaCol && (
-                        <th className="p-3 font-semibold text-emerald-400">
-                          Fecha de Vuelo (Col: {activeFechaCol})
-                        </th>
-                      )}
-                      {dynamicColumns.map((col) => (
-                        <th key={col} className="p-3 font-normal text-slate-400">
-                          {col} <span className="text-[10px] text-slate-500 font-mono">(JSONB)</span>
+                      <th className="p-3 font-semibold text-emerald-400">
+                        Habilitación / Faena / C. Costo
+                      </th>
+                      <th className="p-3 font-semibold text-emerald-400">
+                        Fecha de Vuelo {activeFechaCol ? `(${activeFechaCol})` : '(No asignada)'}
+                      </th>
+                      {OPTIONAL_TRAVEL_FIELDS.map((field) => (
+                        <th key={field.key} className="p-3 font-semibold text-slate-300">
+                          {field.shortLabel}{' '}
+                          <span className="text-[10px] font-normal text-slate-500">
+                            {mapping[field.key] ? `(${mapping[field.key]})` : '(En blanco)'}
+                          </span>
                         </th>
                       ))}
-                      <th className="p-3 font-semibold text-emerald-400">Destino / Seguridad</th>
+                      {dynamicColumns.map((col) => (
+                        <th key={col} className="p-3 font-normal text-amber-300/90">
+                          {col} <span className="text-[10px] text-amber-500/80 font-mono">(JSONB)</span>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
                     {previewRows.map((row) => {
                       const rutVal = cleanDisplayValue(row.data[mapping.map_rut]);
                       const nombreVal = cleanDisplayValue(row.data[mapping.map_nombre]);
-                      const fechaVal = activeFechaCol ? cleanDisplayValue(row.data[activeFechaCol]) : '';
+                      const rawFechaVal = activeFechaCol ? row.data[activeFechaCol] : '';
+                      const fechaInfo = classifyFlightDateClient(rawFechaVal);
                       const isFormatOk = checkRutFormat(rutVal);
 
                       return (
@@ -841,21 +1198,43 @@ export default function UploadExcelView({ role }) {
                             </div>
                           </td>
                           <td className="p-3 font-medium text-slate-200">{nombreVal || '—'}</td>
-                          {activeFechaCol && (
-                            <td className="p-3 font-mono text-emerald-300 font-semibold">
-                              {fechaVal || '—'}
-                            </td>
-                          )}
+                          <td className="p-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
+                              🏛️ Maestro_Personas (Al procesar)
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {activeFechaCol && fechaInfo.normalized !== '—' ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-mono text-emerald-300 font-semibold">
+                                  {fechaInfo.normalized}
+                                </span>
+                                <span className="text-[9px] text-slate-400">
+                                  {fechaInfo.formatType}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-500 italic">—</span>
+                            )}
+                          </td>
+                          {OPTIONAL_TRAVEL_FIELDS.map((field) => {
+                            const colName = mapping[field.key];
+                            const cellVal = colName ? cleanDisplayValue(row.data[colName]) : '';
+                            return (
+                              <td key={field.key} className="p-3">
+                                {cellVal ? (
+                                  <span className="text-slate-200">{cellVal}</span>
+                                ) : (
+                                  <span className="text-slate-600 italic">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
                           {dynamicColumns.map((col) => (
-                            <td key={col} className="p-3 text-slate-400">
+                            <td key={col} className="p-3 text-amber-200/90 font-mono text-[11px]">
                               {cleanDisplayValue(row.data[col]) || '—'}
                             </td>
                           ))}
-                          <td className="p-3">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                              🔒 Fernet AES + JSONB
-                            </span>
-                          </td>
                         </tr>
                       );
                     })}

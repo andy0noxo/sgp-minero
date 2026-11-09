@@ -11,6 +11,7 @@ from core.models import Maestro_Personas
 from core.services.encryption import decrypt_pii, encrypt_pii
 from core.services.excel_reader import (
     FileProcessingError,
+    classify_flight_date,
     inspect_excel,
     read_headers,
     read_rows,
@@ -222,3 +223,61 @@ class ServiceTests(TestCase):
         with self.assertRaises(MapperValidationError) as ctx:
             validate_mapper("no_es_dict", ["COL_A"])
         self.assertIn("objeto JSON", str(ctx.exception))
+
+    def test_validate_mapper_supports_optional_mining_travel_fields(self):
+        available = [
+            "RUT_COL",
+            "NOMBRE_COL",
+            "FECHA_COL",
+            "ORIGEN_COL",
+            "DESTINO_COL",
+            "AEROLINEA_COL",
+            "TURNO_COL",
+            "FONO_COL",
+            "NOTAS_COL",
+        ]
+        mapping = {
+            "map_rut": "RUT_COL",
+            "map_nombre": "NOMBRE_COL",
+            "map_fecha_vuelo": "FECHA_COL",
+            "map_origen": "ORIGEN_COL",
+            "map_destino": "DESTINO_COL",
+            "map_aerolinea": "AEROLINEA_COL",
+            "map_turno": "TURNO_COL",
+            "map_telefono": "FONO_COL",
+            "map_anotaciones": "NOTAS_COL",
+        }
+        cleaned = validate_mapper(mapping, available)
+        self.assertEqual(cleaned, mapping)
+
+    def test_classify_flight_date_identifies_all_mining_formats(self):
+        self.assertEqual(
+            classify_flight_date("2026-11-15"),
+            ("2026-11-15", "Solicitud de emisión (Solo fecha)"),
+        )
+        self.assertEqual(
+            classify_flight_date("15/11/2026"),
+            ("2026-11-15", "Solicitud de emisión (Solo fecha)"),
+        )
+        self.assertEqual(
+            classify_flight_date("2026-11-18 08:30"),
+            ("2026-11-18 08:30", "Vuelo comercial/chárter (Fecha y hora)"),
+        )
+        self.assertEqual(
+            classify_flight_date("2026-11-20 AM (Mañana)"),
+            ("2026-11-20 AM (Mañana)", "Solicitud por tramo horario (AM/PM)"),
+        )
+        self.assertEqual(
+            classify_flight_date("2026-11-21 Charter LA-901 07:15"),
+            (
+                "2026-11-21 Charter LA-901 07:15",
+                "Vuelo Chárter / Comercial asignado",
+            ),
+        )
+        self.assertEqual(
+            classify_flight_date("15/11/2026 al 22/11/2026"),
+            (
+                "15/11/2026 al 22/11/2026",
+                "Ciclo Ida y Regreso (Turno)",
+            ),
+        )

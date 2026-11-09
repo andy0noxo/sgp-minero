@@ -1,6 +1,7 @@
 from datetime import date, datetime
 import math
 from pathlib import Path
+import re
 from zipfile import BadZipFile
 
 import pandas as pd
@@ -24,7 +25,7 @@ def format_cell_preview(val):
             and val.microsecond == 0
         ):
             return val.date().isoformat()
-        return val.isoformat(sep=" ")
+        return val.strftime("%Y-%m-%d %H:%M")
     if isinstance(val, date):
         return val.isoformat()
     if isinstance(val, float):
@@ -36,6 +37,104 @@ def format_cell_preview(val):
     if len(text) == 19 and (text.endswith(" 00:00:00") or text.endswith("T00:00:00")):
         return text[:10]
     return text
+
+
+def classify_flight_date(val):
+    """
+    Normaliza y clasifica el formato de fecha de vuelo según los casos reales
+    de uso en logística minera (solicitud de emisión, vuelo comercial/chárter
+    con hora asignada, tramo horario AM/PM o ciclo ida/regreso).
+    """
+    if val is None or (isinstance(val, float) and math.isnan(val)):
+        return "", "Sin fecha informada"
+    try:
+        if pd.isna(val):
+            return "", "Sin fecha informada"
+    except (TypeError, ValueError):
+        pass
+
+    if isinstance(val, datetime):
+        if (
+            val.hour == 0
+            and val.minute == 0
+            and val.second == 0
+            and val.microsecond == 0
+        ):
+            return val.date().isoformat(), "Solicitud de emisión (Solo fecha)"
+        return (
+            val.strftime("%Y-%m-%d %H:%M"),
+            "Vuelo comercial/chárter (Fecha y hora)",
+        )
+    if isinstance(val, date):
+        return val.isoformat(), "Solicitud de emisión (Solo fecha)"
+
+    text = str(val).strip()
+    if not text:
+        return "", "Sin fecha informada"
+
+    if len(text) == 19 and (text.endswith(" 00:00:00") or text.endswith("T00:00:00")):
+        return text[:10], "Solicitud de emisión (Solo fecha)"
+
+    lower = text.lower()
+
+    # Caso 1: Ciclo de turno Ida y Regreso (ej. "2026-11-15 al 2026-11-22")
+    if " al " in lower or (" - " in lower and len(text) >= 21):
+        return text, "Ciclo Ida y Regreso (Turno)"
+
+    # Caso 2: Vuelo Chárter o Comercial con código de vuelo identificado
+    if any(
+        kw in lower
+        for kw in (
+            "charter",
+            "chárter",
+            "vuelo",
+            "la-",
+            "la ",
+            "sky",
+            "jetsmart",
+            "bus",
+        )
+    ):
+        return text, "Vuelo Chárter / Comercial asignado"
+
+    # Caso 3: Reserva por tramo horario (AM / PM / Mañana / Tarde / Noche)
+    if any(
+        kw in lower
+        for kw in (" am", " pm", "(am)", "(pm)", "mañana", "manana", "tarde", "noche")
+    ):
+        return text, "Solicitud por tramo horario (AM/PM)"
+
+    # Caso 4: Fecha con hora explícita HH:MM (ej. "2026-11-15 08:30")
+    dt_match = re.match(
+        r"^(\d{4})[-/](\d{2})[-/](\d{2})[T\s]+(\d{2}:\d{2})(?::\d{2})?$", text
+    )
+    if dt_match:
+        y, m, d, hm = dt_match.groups()
+        if hm == "00:00":
+            return f"{y}-{m}-{d}", "Solicitud de emisión (Solo fecha)"
+        return f"{y}-{m}-{d} {hm}", "Vuelo comercial/chárter (Fecha y hora)"
+
+    dt_cl_match = re.match(
+        r"^(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{2}:\d{2})(?::\d{2})?$", text
+    )
+    if dt_cl_match:
+        d, m, y, hm = dt_cl_match.groups()
+        if hm == "00:00":
+            return f"{y}-{m}-{d}", "Solicitud de emisión (Solo fecha)"
+        return f"{y}-{m}-{d} {hm}", "Vuelo comercial/chárter (Fecha y hora)"
+
+    # Caso 5: Solo fecha en formato ISO (YYYY-MM-DD) o Chileno (DD/MM/YYYY o DD-MM-YYYY)
+    iso_match = re.match(r"^(\d{4})[-/](\d{2})[-/](\d{2})$", text)
+    if iso_match:
+        y, m, d = iso_match.groups()
+        return f"{y}-{m}-{d}", "Solicitud de emisión (Solo fecha)"
+
+    cl_match = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})$", text)
+    if cl_match:
+        d, m, y = cl_match.groups()
+        return f"{y}-{m}-{d}", "Solicitud de emisión (Solo fecha)"
+
+    return text, "Formato de fecha de contratista"
 
 
 def _validate_file(uploaded_file, allowed_extensions):

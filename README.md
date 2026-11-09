@@ -350,17 +350,17 @@ buscar al usuario. El correo corporativo mantiene su comportamiento normal.
 El rol Cargador dispone de las opciones **Carga Masiva (Excel)** (`/carga`, con
 asistente visual en 4 pasos, zona interactiva *Drag & Drop*, validación en
 cliente de extensión + MIME `.xlsx` y tamaño `<= 10 MB`, alertas flotantes
-*Toast* y *spinner* de progreso) y **Mis Cargas** (`/historial`). Esta última
-presenta tarjetas KPI acumuladas de gestión, un listado visual de las planillas
-`.xlsx` subidas con barra de progreso de aprobación, y un **panel de inspección
-visual en 4 pasos** para cualquier lote seleccionado: 1) Ficha del archivo
-subido y columnas dinámicas `JSONB`, 2) Trazabilidad de las 4 etapas del
-pipeline backend (`pipeline_trace`: Pandas, Módulo 11, Maestro y Fernet),
-3) Balance de resultados de la subida y 4) Representación interactiva en tabla
-fila por fila del archivo (con filtros `Todas`, `Aprobadas` y `Rechazadas`,
-buscador en vivo, previsualización de tokens cifrados `Fernet`, faena asignada,
-columnas dinámicas del Excel y diagnóstico de validación); los lotes de otros
-usuarios no se exponen.
+*Toast* y *spinner* de progreso) y **Mis Cargas** (`/historial`).
+
+En el Paso 2 del asistente (**Comparador de Encabezados**), el sistema soporta:
+1. **Campos troncales (`map_rut`, `map_nombre`, `map_fecha_vuelo`)**: auto-detectados cuando el Excel usa nombres estándar (`RUT_Pasajero`, `Nombre_Completo`, `Fecha_Vuelo`) o asignables manualmente cuando vienen con nombres de contratista (`RUN_Operario`, `Doc_Identidad`, `Fec_Salida`, etc.).
+2. **Clasificación automática de los 5 formatos de Fecha de Vuelo de la industria minera**: *Solicitud de emisión (Solo fecha)* (`YYYY-MM-DD` o `DD/MM/YYYY`), *Vuelo comercial/chárter (Fecha y hora)* (`YYYY-MM-DD HH:MM`), *Solicitud por tramo horario (AM/PM)*, *Vuelo Chárter / Comercial asignado* y *Ciclo Ida y Regreso (Turno)*.
+3. **Asignación oficial desde `Maestro_Personas` (sin mapeo manual)**: por seguridad operacional minera, `estado_habilitacion`, `faena` y `centro_costo` nunca se confían al Excel del contratista, sino que el servidor los valida e inyecta directamente desde `Maestro_Personas`.
+4. **6 Columnas Variables Típicas de Pasajes Mineros (`map_origen`, `map_destino`, `map_aerolinea`, `map_turno`, `map_telefono`, `map_anotaciones`)**: asignables si existen en el Excel o dejadas en blanco (`—`) si no vienen, permaneciendo siempre visibles dentro de la estructura fija de la tabla (en la Vista Previa del Paso 3, en `Mis Cargas` y en el `Dashboard`) para comprobar si falta información relevante. Cualquier columna adicional fuera de este esquema se empaqueta automáticamente en el campo polimórfico `JSONB`.
+
+Para pruebas integrales del rol Cargador, el repositorio incluye **5 archivos Excel de prueba (`10`, `25`, `50`, `100` y `500` filas)** en [`docs/archivos_prueba_cargador/`](docs/archivos_prueba_cargador/README.md) (regenerables con `docker compose exec backend python manage.py generate_sample_excels`).
+
+La vista **Mis Cargas** (`/historial`) presenta tarjetas KPI acumuladas de gestión, un listado visual de las planillas `.xlsx` subidas con barra de progreso de aprobación, y un **panel de inspección visual en 4 pasos** para cualquier lote seleccionado: 1) Ficha del archivo subido y columnas dinámicas `JSONB`, 2) Trazabilidad de las 4 etapas del pipeline backend (`pipeline_trace`: Pandas, Módulo 11, Maestro y Fernet), 3) Balance de resultados de la subida y 4) Representación interactiva en tabla fila por fila del archivo con toda la estructura estandarizada (`RUT`, `Nombre`, `Habilitación`, `Faena`, `Centro Costo`, `Fecha Vuelo + Modalidad`, `Origen`, `Destino`, `Aerolínea`, `Turno`, `Teléfono`, `Anotaciones` y columnas extra `JSONB`); los lotes de otros usuarios no se exponen.
 
 El rol Consultor dispone del **Dashboard corporativo** (`/dashboard`), con
 filtros por fecha, faena, centro de costo y estado, paginación de hasta 50

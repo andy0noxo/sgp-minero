@@ -1,5 +1,13 @@
 REQUIRED_MAPPER_FIELDS = ("map_rut", "map_nombre")
-OPTIONAL_MAPPER_FIELDS = ("map_fecha_vuelo",)
+OPTIONAL_MAPPER_FIELDS = (
+    "map_fecha_vuelo",
+    "map_origen",
+    "map_destino",
+    "map_aerolinea",
+    "map_turno",
+    "map_telefono",
+    "map_anotaciones",
+)
 
 
 class MapperValidationError(ValueError):
@@ -35,7 +43,7 @@ def validate_mapper(mapping, available_columns):
     selected_cols = [str(mapping[field]).strip() for field in active_fields]
     if len(selected_cols) != len(set(selected_cols)):
         raise MapperValidationError(
-            "RUT, nombre y fecha de vuelo deben usar columnas distintas."
+            "Las columnas asignadas en el mapeo deben ser distintas entre sí."
         )
 
     return {field: str(mapping[field]).strip() for field in active_fields}

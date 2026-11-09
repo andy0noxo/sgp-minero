@@ -161,7 +161,7 @@ El rol `Cargador` utiliza estos endpoints protegidos:
   - `column_samples`: diccionario con los primeros 3 valores representativos no vacíos por columna para asistir el emparejamiento visual.
   - `preview_rows`: muestra paginada de hasta 15 filas útiles para la previsualización previa de la nómina en cliente sin persistir PII en BD.
 - `POST /api/v1/uploads/process/` con los campos multipart `file` y `mapping`.
-  El mapper exige `map_rut` y `map_nombre` y admite el mapeo oficial de la fecha de vuelo mediante `map_fecha_vuelo` (estandarizándola bajo la llave canónica `fecha_vuelo` en formato `YYYY-MM-DD`, eliminando horas vacías `00:00:00` de celdas Fecha de Excel y sufijos `.0` en números enteros).
+  El mapper exige `map_rut` y `map_nombre`, admite `map_fecha_vuelo` (con clasificación automática de los 5 formatos de fecha de vuelo mineros en `fecha_vuelo` y `tipo_fecha_vuelo`) y permite asignar las **6 columnas variables típicas de pasajes mineros** (`map_origen -> origen`, `map_destino -> destino`, `map_aerolinea -> aerolinea`, `map_turno -> turno`, `map_telefono -> telefono_contacto`, `map_anotaciones -> anotaciones`). Además, inyecta automáticamente desde `Maestro_Personas` los campos oficiales `faena`, `centro_costo` y `estado_habilitacion`, y empaqueta cualquier columna adicional no mapeada dentro de `columnas_dinamicas_jsonb`.
 
 El procesamiento exitoso devuelve `200`. Si existen rechazos parciales,
 devuelve `207 Multi-Status` y conserva las filas válidas en una transacción atómica. La respuesta contiene

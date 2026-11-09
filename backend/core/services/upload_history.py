@@ -2,6 +2,23 @@ from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Sum
 
 from core.models import LoteCarga, RegistroAuditoria
+from core.services.excel_reader import classify_flight_date
+
+RESERVED_PAYLOAD_KEYS = {
+    "rut_cifrado",
+    "nombre_cifrado",
+    "faena",
+    "centro_costo",
+    "estado_habilitacion",
+    "fecha_vuelo",
+    "tipo_fecha_vuelo",
+    "origen",
+    "destino",
+    "aerolinea",
+    "turno",
+    "telefono_contacto",
+    "anotaciones",
+}
 
 
 def _batch_summary(batch):
@@ -91,9 +108,10 @@ def get_upload_detail(user, batch_id):
             sample_token = f"{rut_token[:12]}..."
 
         fecha_vuelo = payload.get("fecha_vuelo")
+        tipo_fecha_vuelo = payload.get("tipo_fecha_vuelo")
         datos_dinamicos = {}
         for key, val in payload.items():
-            if key not in ("rut_cifrado", "nombre_cifrado", "faena", "fecha_vuelo"):
+            if key not in RESERVED_PAYLOAD_KEYS:
                 cleaned_val = _clean_display_val(val)
                 if fecha_vuelo is None and key.strip().lower() in (
                     "fecha_vuelo",
@@ -108,6 +126,10 @@ def get_upload_detail(user, batch_id):
                     seen_cols.add(key)
                     dynamic_cols.append(key)
 
+        cleaned_fecha = _clean_display_val(fecha_vuelo) or "—"
+        if not tipo_fecha_vuelo and cleaned_fecha != "—":
+            _, tipo_fecha_vuelo = classify_flight_date(cleaned_fecha)
+
         registros_aprobados.append(
             {
                 "id": str(record.id),
@@ -115,7 +137,20 @@ def get_upload_detail(user, batch_id):
                 "fecha_procesamiento": record.fecha_procesamiento.isoformat(),
                 "estado_validacion": record.estado_validacion,
                 "faena": payload.get("faena") or "Sin asignar",
-                "fecha_vuelo": _clean_display_val(fecha_vuelo) or "—",
+                "centro_costo": payload.get("centro_costo") or "General",
+                "estado_habilitacion": payload.get("estado_habilitacion")
+                or "Habilitado",
+                "fecha_vuelo": cleaned_fecha,
+                "tipo_fecha_vuelo": tipo_fecha_vuelo or "No informada",
+                "origen": _clean_display_val(payload.get("origen")) or "—",
+                "destino": _clean_display_val(payload.get("destino")) or "—",
+                "aerolinea": _clean_display_val(payload.get("aerolinea")) or "—",
+                "turno": _clean_display_val(payload.get("turno")) or "—",
+                "telefono_contacto": _clean_display_val(
+                    payload.get("telefono_contacto")
+                )
+                or "—",
+                "anotaciones": _clean_display_val(payload.get("anotaciones")) or "—",
                 "rut_cifrado_preview": (
                     f"{rut_token[:14]}..." if rut_token else "gAAAAAB..."
                 ),
@@ -172,7 +207,16 @@ def get_upload_detail(user, batch_id):
                 "fila": item["fila_origen"],
                 "estado_fila": "APROBADO",
                 "faena": item["faena"],
+                "centro_costo": item["centro_costo"],
+                "estado_habilitacion": item["estado_habilitacion"],
                 "fecha_vuelo": item["fecha_vuelo"],
+                "tipo_fecha_vuelo": item["tipo_fecha_vuelo"],
+                "origen": item["origen"],
+                "destino": item["destino"],
+                "aerolinea": item["aerolinea"],
+                "turno": item["turno"],
+                "telefono_contacto": item["telefono_contacto"],
+                "anotaciones": item["anotaciones"],
                 "rut_cifrado_preview": item["rut_cifrado_preview"],
                 "nombre_cifrado_preview": item["nombre_cifrado_preview"],
                 "datos_dinamicos": item["datos_dinamicos"],
@@ -189,7 +233,18 @@ def get_upload_detail(user, batch_id):
                 "fila": err.get("fila", 0),
                 "estado_fila": "RECHAZADO",
                 "faena": "—",
+                "centro_costo": "—",
+                "estado_habilitacion": (
+                    "Inhabilitado" if err.get("code") == "PERSON_INACTIVE" else "—"
+                ),
                 "fecha_vuelo": "—",
+                "tipo_fecha_vuelo": "—",
+                "origen": "—",
+                "destino": "—",
+                "aerolinea": "—",
+                "turno": "—",
+                "telefono_contacto": "—",
+                "anotaciones": "—",
                 "rut_cifrado_preview": "No persistido",
                 "nombre_cifrado_preview": "No persistido",
                 "datos_dinamicos": {},

@@ -117,6 +117,16 @@ export default function UploadsHistoryView() {
         fila: item.fila_origen,
         estado_fila: 'APROBADO',
         faena: item.faena || 'Sin asignar',
+        centro_costo: item.centro_costo || 'General',
+        estado_habilitacion: item.estado_habilitacion || 'Habilitado',
+        fecha_vuelo: item.fecha_vuelo || '—',
+        tipo_fecha_vuelo: item.tipo_fecha_vuelo || 'No informada',
+        origen: item.origen || '—',
+        destino: item.destino || '—',
+        aerolinea: item.aerolinea || '—',
+        turno: item.turno || '—',
+        telefono_contacto: item.telefono_contacto || '—',
+        anotaciones: item.anotaciones || '—',
         rut_cifrado_preview: item.rut_cifrado_preview || 'gAAAAAB...',
         nombre_cifrado_preview: item.nombre_cifrado_preview || 'gAAAAAB...',
         datos_dinamicos: item.datos_dinamicos || {},
@@ -129,6 +139,16 @@ export default function UploadsHistoryView() {
         fila: err.fila,
         estado_fila: 'RECHAZADO',
         faena: '—',
+        centro_costo: '—',
+        estado_habilitacion: err.code === 'PERSON_INACTIVE' ? 'Inhabilitado' : '—',
+        fecha_vuelo: '—',
+        tipo_fecha_vuelo: '—',
+        origen: '—',
+        destino: '—',
+        aerolinea: '—',
+        turno: '—',
+        telefono_contacto: '—',
+        anotaciones: '—',
         rut_cifrado_preview: 'No persistido',
         nombre_cifrado_preview: 'No persistido',
         datos_dinamicos: {},
@@ -151,6 +171,12 @@ export default function UploadsHistoryView() {
       return (
         String(row.fila).includes(query) ||
         String(row.faena || '').toLowerCase().includes(query) ||
+        String(row.centro_costo || '').toLowerCase().includes(query) ||
+        String(row.fecha_vuelo || '').toLowerCase().includes(query) ||
+        String(row.origen || '').toLowerCase().includes(query) ||
+        String(row.destino || '').toLowerCase().includes(query) ||
+        String(row.aerolinea || '').toLowerCase().includes(query) ||
+        String(row.turno || '').toLowerCase().includes(query) ||
         String(row.code || '').toLowerCase().includes(query) ||
         String(row.message || '').toLowerCase().includes(query) ||
         dynamicText.includes(query)
@@ -740,11 +766,19 @@ export default function UploadsHistoryView() {
                       <th className="p-3">Estado</th>
                       <th className="p-3 text-amber-400">RUT (Protección PII)</th>
                       <th className="p-3 text-sky-400">Nombre (Protección PII)</th>
+                      <th className="p-3 text-emerald-400">Habilitación</th>
+                      <th className="p-3 text-emerald-400">Faena</th>
+                      <th className="p-3 text-emerald-400">Centro Costo</th>
                       <th className="p-3 text-emerald-400">Fecha Vuelo</th>
-                      <th className="p-3 text-emerald-400">Faena Asignada</th>
+                      <th className="p-3 text-slate-300">Origen</th>
+                      <th className="p-3 text-slate-300">Destino</th>
+                      <th className="p-3 text-slate-300">Aerolínea</th>
+                      <th className="p-3 text-slate-300">Turno</th>
+                      <th className="p-3 text-slate-300">Teléfono</th>
+                      <th className="p-3 text-slate-300">Anotaciones</th>
                       {dynamicColumns.map((col) => (
-                        <th key={col} className="p-3 font-normal text-slate-300">
-                          {col} <span className="text-[10px] text-slate-500 font-mono">(JSONB)</span>
+                        <th key={col} className="p-3 font-normal text-amber-300">
+                          {col} <span className="text-[10px] text-amber-500/80 font-mono">(JSONB)</span>
                         </th>
                       ))}
                       <th className="p-3">Diagnóstico / Trazabilidad</th>
@@ -798,8 +832,18 @@ export default function UploadsHistoryView() {
                               <span className="text-[11px] text-slate-500 italic">No persistido</span>
                             )}
                           </td>
-                          <td className="p-3 font-mono text-emerald-300">
-                            {isApproved ? (row.fecha_vuelo || '—') : '—'}
+                          <td className="p-3">
+                            {isApproved ? (
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 text-[10px] font-semibold">
+                                ✓ {row.estado_habilitacion || 'Habilitado'}
+                              </span>
+                            ) : row.code === 'PERSON_INACTIVE' ? (
+                              <span className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/25 text-[10px] font-semibold">
+                                ✕ Inhabilitado
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
                           </td>
                           <td className="p-3">
                             {isApproved ? (
@@ -810,8 +854,45 @@ export default function UploadsHistoryView() {
                               <span className="text-slate-500">—</span>
                             )}
                           </td>
+                          <td className="p-3 font-mono text-[11px] text-slate-300">
+                            {isApproved ? (row.centro_costo || 'General') : '—'}
+                          </td>
+                          <td className="p-3">
+                            {isApproved && row.fecha_vuelo && row.fecha_vuelo !== '—' ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-mono text-emerald-300 font-semibold">
+                                  {row.fecha_vuelo}
+                                </span>
+                                {row.tipo_fecha_vuelo && row.tipo_fecha_vuelo !== 'No informada' && (
+                                  <span className="text-[9px] text-slate-400">
+                                    {row.tipo_fecha_vuelo}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-300">
+                            {isApproved ? (row.origen || '—') : '—'}
+                          </td>
+                          <td className="p-3 text-slate-300">
+                            {isApproved ? (row.destino || '—') : '—'}
+                          </td>
+                          <td className="p-3 text-slate-300">
+                            {isApproved ? (row.aerolinea || '—') : '—'}
+                          </td>
+                          <td className="p-3 text-slate-300">
+                            {isApproved ? (row.turno || '—') : '—'}
+                          </td>
+                          <td className="p-3 text-slate-300 font-mono text-[11px]">
+                            {isApproved ? (row.telefono_contacto || '—') : '—'}
+                          </td>
+                          <td className="p-3 text-slate-300">
+                            {isApproved ? (row.anotaciones || '—') : '—'}
+                          </td>
                           {dynamicColumns.map((col) => (
-                            <td key={col} className="p-3 text-slate-300">
+                            <td key={col} className="p-3 text-amber-200/90 font-mono text-[11px]">
                               {isApproved ? (row.datos_dinamicos?.[col] ?? '—') : '—'}
                             </td>
                           ))}
