@@ -4,7 +4,14 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from core.models import Maestro_Personas, Rol, Usuario
+from core.models import (
+    LoteCarga,
+    Maestro_Personas,
+    RegistroAuditoria,
+    RegistroViaje,
+    Rol,
+    Usuario,
+)
 
 
 ROLE_DEFINITIONS = {
@@ -51,7 +58,9 @@ class BaseCommandWithSeed(BaseCommand):
             )
         return value
 
-    def _get_or_create_user(self, *, env_prefix, role, superuser=False):
+    def _get_or_create_user(
+        self, *, env_prefix, role, superuser=False, force_reset=False
+    ):
         rut = self._required_env(f"{env_prefix}_RUT")
         email = self._required_env(f"{env_prefix}_EMAIL")
         password = self._required_env(f"{env_prefix}_PASSWORD")
@@ -65,7 +74,7 @@ class BaseCommandWithSeed(BaseCommand):
                 "is_superuser": superuser,
             },
         )
-        if created:
+        if created or force_reset:
             user.set_password(password)
         else:
             user.email_corporativo = email
@@ -73,8 +82,40 @@ class BaseCommandWithSeed(BaseCommand):
             if superuser:
                 user.is_staff = True
                 user.is_superuser = True
+        if force_reset:
+            user.email_corporativo = email
+            user.rol = role
+            user.is_active = True
+            user.is_staff = superuser
+            user.is_superuser = superuser
+            user.failed_login_attempts = 0
+            user.locked_until = None
         user.save()
         return user, created
+
+    def _reset_database_state(self, *, seed_user_ruts, keep_demo_master=False):
+        viajes_deleted, _ = RegistroViaje.objects.all().delete()
+        lotes_deleted, _ = LoteCarga.objects.all().delete()
+        auditoria_deleted, _ = RegistroAuditoria.objects.all().delete()
+        usuarios_deleted, _ = Usuario.objects.exclude(rut__in=seed_user_ruts).delete()
+        if keep_demo_master:
+            demo_master_ruts = {
+                _rut_for_number(20000000 + index)
+                for index in range(DEMO_MASTER_ROW_COUNT)
+            }
+            maestro_deleted, _ = Maestro_Personas.objects.exclude(
+                rut__in=demo_master_ruts
+            ).delete()
+        else:
+            maestro_deleted, _ = Maestro_Personas.objects.all().delete()
+
+        return {
+            "viajes": viajes_deleted,
+            "lotes": lotes_deleted,
+            "auditoria": auditoria_deleted,
+            "usuarios_extra": usuarios_deleted,
+            "maestro_extra": maestro_deleted,
+        }
 
     def _seed_master_people(self):
         created = 0
@@ -102,8 +143,19 @@ class BaseCommandWithSeed(BaseCommand):
 class Command(BaseCommandWithSeed):
     help = "Crea datos locales de demostración de forma idempotente."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reset",
+            action="store_true",
+            help=(
+                "Limpia cargas previas, viajes, auditoría, usuarios extra y "
+                "personas no pertenecientes al seed antes de poblar desde cero."
+            ),
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
+        force_reset = bool(options.get("reset", False))
         if os.getenv("SEED_DEMO_DATA", "False").strip().lower() not in {
             "1",
             "true",
@@ -131,23 +183,48 @@ class Command(BaseCommandWithSeed):
             ("DEMO_CARGADOR", "Cargador", False),
             ("DEMO_CONSULTOR", "Consultor", False),
         ]
+
+        seed_master_enabled = os.getenv(
+            "SEED_DEMO_MASTER_DATA", "False"
+        ).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+        if force_reset:
+            seed_user_ruts = {
+                self._required_env(f"{env_prefix}_RUT") for env_prefix, _, _ in users
+            }
+            reset_counts = self._reset_database_state(
+                seed_user_ruts=seed_user_ruts,
+                keep_demo_master=seed_master_enabled,
+            )
+            self.stdout.write(
+                self.style.WARNING(
+                    "Base de datos de desarrollo reiniciada en limpio "
+                    f"(viajes eliminados: {reset_counts['viajes']}, "
+                    f"lotes: {reset_counts['lotes']}, "
+                    f"auditoría: {reset_counts['auditoria']}, "
+                    f"usuarios extra: {reset_counts['usuarios_extra']}, "
+                    f"maestro extra: {reset_counts['maestro_extra']})."
+                )
+            )
+
         created_users = []
         for env_prefix, role_name, superuser in users:
             user, created = self._get_or_create_user(
                 env_prefix=env_prefix,
                 role=roles[role_name],
                 superuser=superuser,
+                force_reset=force_reset,
             )
             if created:
                 created_users.append(user.email_corporativo)
 
         master_created = master_updated = 0
-        if os.getenv("SEED_DEMO_MASTER_DATA", "False").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
+        if seed_master_enabled:
             master_created, master_updated = self._seed_master_people()
 
         self.stdout.write(

@@ -7,7 +7,14 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import Maestro_Personas, RegistroAuditoria, Rol, Usuario
+from .models import (
+    LoteCarga,
+    Maestro_Personas,
+    RegistroAuditoria,
+    RegistroViaje,
+    Rol,
+    Usuario,
+)
 
 
 class AuthenticationApiTests(TestCase):
@@ -195,6 +202,73 @@ class DemoDataCommandTests(TestCase):
             Maestro_Personas.objects.filter(estado_habilitacion=False).count(),
             19,
         )
+
+    @override_settings(DEBUG=True)
+    @patch.dict(
+        os.environ,
+        {
+            "SEED_DEMO_DATA": "True",
+            "SEED_DEMO_MASTER_DATA": "True",
+            "DJANGO_SUPERUSER_RUT": "11111111-1",
+            "DJANGO_SUPERUSER_EMAIL": "admin@minera.local",
+            "DJANGO_SUPERUSER_PASSWORD": "admin-password",
+            "DEMO_CARGADOR_RUT": "22222222-2",
+            "DEMO_CARGADOR_EMAIL": "cargador@minera.local",
+            "DEMO_CARGADOR_PASSWORD": "cargador-password",
+            "DEMO_CONSULTOR_RUT": "33333333-3",
+            "DEMO_CONSULTOR_EMAIL": "consultor@minera.local",
+            "DEMO_CONSULTOR_PASSWORD": "consultor-password",
+        },
+        clear=False,
+    )
+    def test_seed_with_reset_cleans_previous_uploads_audit_and_extra_users(self):
+        call_command("seed_demo_data")
+        cargador = Usuario.objects.get(rut="22222222-2")
+        extra_user = Usuario.objects.create_user(
+            rut="99999999-9",
+            email_corporativo="extra@minera.local",
+            password="extra-password",
+            rol=cargador.rol,
+        )
+        batch = LoteCarga.objects.create(
+            cargador=extra_user,
+            nombre_archivo_origen="residual.xlsx",
+            total_filas=1,
+            filas_procesadas=1,
+        )
+        RegistroViaje.objects.create(
+            lote=batch,
+            cargador=extra_user,
+            nombre_archivo_origen="residual.xlsx",
+            fila_origen=2,
+            estado_validacion=RegistroViaje.EstadoValidacion.APROBADO,
+            payload_datos={"faena": "Faena Norte"},
+        )
+        Maestro_Personas.objects.create(
+            rut="88888888-8",
+            nombre_completo="Extra Persona",
+            faena="Faena Norte",
+            centro_costo="MINA-99",
+        )
+        RegistroAuditoria.objects.create(
+            usuario=extra_user,
+            accion="PROCESAR_CARGA_VIAJES",
+            modulo="INGESTA",
+            resultado=RegistroAuditoria.Resultado.EXITOSO,
+        )
+
+        os.environ["DJANGO_SUPERUSER_PASSWORD"] = "reset-admin-password"
+        call_command("seed_demo_data", reset=True)
+
+        self.assertEqual(RegistroViaje.objects.count(), 0)
+        self.assertEqual(LoteCarga.objects.count(), 0)
+        self.assertEqual(RegistroAuditoria.objects.count(), 0)
+        self.assertEqual(Usuario.objects.count(), 3)
+        self.assertFalse(Usuario.objects.filter(rut="99999999-9").exists())
+        self.assertEqual(Maestro_Personas.objects.count(), 75)
+        self.assertFalse(Maestro_Personas.objects.filter(rut="88888888-8").exists())
+        admin = Usuario.objects.get(rut="11111111-1")
+        self.assertTrue(admin.check_password("reset-admin-password"))
 
     @override_settings(DEBUG=False)
     @patch.dict(os.environ, {"SEED_DEMO_DATA": "True"}, clear=False)

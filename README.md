@@ -142,6 +142,8 @@ docker compose exec backend python manage.py check
 docker compose exec backend python manage.py check --deploy
 docker compose exec backend python manage.py createsuperuser
 docker compose exec backend python manage.py seed_demo_data
+# Reiniciar la base de datos de desarrollo en limpio desde 0 (borra cargas, viajes, auditoría y usuarios extra):
+docker compose exec backend python manage.py seed_demo_data --reset
 docker compose exec backend pytest
 docker compose exec backend flake8 .
 docker compose exec backend black --check .
@@ -228,8 +230,10 @@ Con `SEED_DEMO_MASTER_DATA=True` también se crean 75 personas demo en el
 Mantenedor, distribuidas entre `Faena Cordillera`, `Faena Norte` y
 `Faena Central`, cinco centros de costo y estados habilitados e inhabilitados.
 La cantidad permite probar la paginación y los filtros sin subir manualmente
-un archivo. El seed actualiza solamente sus RUT demo deterministas y no elimina
-ni modifica otros registros.
+un archivo.
+
+**Reinicio limpio de datos en desarrollo (`RESET_DB_ON_CONTAINER_CREATE` y `--reset`):**
+Debido a que `docker-compose.yml` monta el volumen persistente `pgdata`, al eliminar únicamente los contenedores (sin `-v`) PostgreSQL conserva el disco anterior. Para permitir partir limpio desde cero al eliminar y recrear los contenedores en desarrollo, `backend/entrypoint.sh` verifica la marca interna `/var/lib/sgp_container_initialized`: cuando se crea un contenedor nuevo (`RESET_DB_ON_CONTAINER_CREATE=True` por defecto) o cuando se define `RESET_DB_ON_START=True`, ejecuta automáticamente `python manage.py seed_demo_data --reset`, purgando cargas previas (`LoteCarga`), viajes (`RegistroViaje`), eventos de auditoría (`RegistroAuditoria`), usuarios adicionales y registros maestros ajenos al seed base, dejando el entorno 100% limpio desde cero. También puedes ejecutarlo manualmente en cualquier momento con `docker compose exec backend python manage.py seed_demo_data --reset` o eliminar el volumen con `docker compose down -v`.
 
 El seed solo se ejecuta con `DJANGO_DEBUG=True`. En producción debe mantenerse
 `SEED_DEMO_DATA=False` y `SEED_DEMO_MASTER_DATA=False`. Los datos reales se
@@ -344,11 +348,19 @@ El backend normaliza el valor al formato canónico `12345678-5` antes de
 buscar al usuario. El correo corporativo mantiene su comportamiento normal.
 
 El rol Cargador dispone de las opciones **Carga Masiva (Excel)** (`/carga`, con
-zona interactiva *Drag & Drop*, validación en cliente de extensión + MIME
-`.xlsx` y tamaño `<= 10 MB`, alertas flotantes *Toast* y *spinner* de progreso) y
-**Mis Cargas** (`/historial`). Esta última consulta el historial de sus lotes,
-sus totales y el detalle de las filas rechazadas mediante la API protegida; los
-lotes de otros usuarios no se exponen.
+asistente visual en 4 pasos, zona interactiva *Drag & Drop*, validación en
+cliente de extensión + MIME `.xlsx` y tamaño `<= 10 MB`, alertas flotantes
+*Toast* y *spinner* de progreso) y **Mis Cargas** (`/historial`). Esta última
+presenta tarjetas KPI acumuladas de gestión, un listado visual de las planillas
+`.xlsx` subidas con barra de progreso de aprobación, y un **panel de inspección
+visual en 4 pasos** para cualquier lote seleccionado: 1) Ficha del archivo
+subido y columnas dinámicas `JSONB`, 2) Trazabilidad de las 4 etapas del
+pipeline backend (`pipeline_trace`: Pandas, Módulo 11, Maestro y Fernet),
+3) Balance de resultados de la subida y 4) Representación interactiva en tabla
+fila por fila del archivo (con filtros `Todas`, `Aprobadas` y `Rechazadas`,
+buscador en vivo, previsualización de tokens cifrados `Fernet`, faena asignada,
+columnas dinámicas del Excel y diagnóstico de validación); los lotes de otros
+usuarios no se exponen.
 
 El rol Consultor dispone del **Dashboard corporativo** (`/dashboard`), con
 filtros por fecha, faena, centro de costo y estado, paginación de hasta 50

@@ -94,10 +94,18 @@ Para ejecutar el seed manualmente en desarrollo:
 docker compose exec backend python manage.py seed_demo_data
 ```
 
+Para reiniciar la base de datos de desarrollo en limpio desde cero (eliminando todas las cargas previas `LoteCarga`, registros de viaje `RegistroViaje`, eventos de auditoría `RegistroAuditoria`, usuarios adicionales y registros maestros ajenos al seed base):
+
+```powershell
+docker compose exec backend python manage.py seed_demo_data --reset
+```
+
+En el arranque local (`backend/entrypoint.sh`), cuando el contenedor backend se crea por primera vez tras haber sido eliminado (`RESET_DB_ON_CONTAINER_CREATE=True` por defecto, verificado mediante la marca `/var/lib/sgp_container_initialized` interna al contenedor) o cuando se define `RESET_DB_ON_START=True`, se ejecuta automáticamente `python manage.py seed_demo_data --reset`. De esta forma, al eliminar y volver a levantar los contenedores en desarrollo, siempre se parte desde cero aunque el volumen `pgdata` de PostgreSQL persista.
+
 Con `SEED_DEMO_MASTER_DATA=True` el comando crea 75 personas demo, repartidas
 entre `Faena Cordillera`, `Faena Norte` y `Faena Central`, cinco centros de
 costo y estados habilitados e inhabilitados para probar paginación y filtros.
-Es idempotente, conserva los registros reales y solo actualiza sus RUT demo
+Sin `--reset`, es idempotente, conserva los registros reales y solo actualiza sus RUT demo
 deterministas.
 
 Para omitir el seed en un entorno local:
@@ -169,17 +177,18 @@ vacíos y el límite de 10 MB. El RUT y el nombre se cifran con Fernet antes de
 persistirse en `RegistroViaje.payload_datos` como JSONB, eliminando del payload
 las columnas originales en texto plano.
 
-El Cargador puede consultar sus propias cargas mediante:
+El Cargador puede consultar y auditar visualmente sus propias cargas en una vista guiada de 4 etapas (`/historial`) mediante:
 
-- `GET /api/v1/uploads/history/` para obtener el historial paginado. Acepta
-  `page` y `page_size`, con un máximo de 100 elementos por página.
-- `GET /api/v1/uploads/history/<lote_id>/` para consultar el detalle de una
-  carga, incluyendo sus filas aprobadas y el detalle persistido de los
-  rechazos.
+- `GET /api/v1/uploads/history/` para obtener el historial paginado junto con la `tasa_aprobacion` porcentual de cada lote y el bloque agregado `summary_kpis` (`total_lotes`, `total_filas_historico`, `total_aprobadas_historico`, `total_rechazadas_historico`). Acepta `page` y `page_size`, con un máximo de 100 elementos por página.
+- `GET /api/v1/uploads/history/<lote_id>/` para consultar la ficha completa de una carga histórica, estructurada para alimentar el asistente visual de 4 pasos de `UploadsHistoryView.jsx`:
+  1. **Archivo Subido y Estructura Detectada:** Metadatos del lote y `columnas_dinamicas` detectadas en el `JSONB`.
+  2. **Trazabilidad del Pipeline Backend (4 Fases):** Objeto `pipeline_trace` recuperado de `RegistroAuditoria` o reconstruido a partir del lote (Limpieza Pandas, Módulo 11, Maestro + Faena y Criptografía Fernet con prefijo de muestra `gAAAAAB...`).
+  3. **Resultados de la Subida:** Balance de filas totales, aprobadas, rechazadas y porcentaje de aprobación.
+  4. **Representación en Tabla (`filas_tabla`):** Arreglo unificado y ordenado por `# Fila Excel` que combina tanto los `registros_aprobados` (con vista previa segura de tokens Fernet `rut_cifrado_preview` / `nombre_cifrado_preview`, `faena` y `datos_dinamicos`) como el `detalle_errores` de filas rechazadas.
 
 El historial está aislado por usuario: un Cargador no puede consultar lotes de
 otro usuario. Los estados, totales y fechas se almacenan en `LoteCarga`; los
-rechazos se conservan en `detalle_errores` como JSON y no contienen PII.
+rechazos se conservan en `detalle_errores` como JSON y ningún dato PII viaja en texto plano.
 
 ## Mantenedor masivo de personas
 
@@ -292,18 +301,7 @@ HMAC-SHA256. La llave se obtiene desde `AES_SECRET_KEY`; el término AES se
 utiliza para describir el algoritmo subyacente y Fernet para referirse a la
 implementación concreta autenticada.
 
-**Gestión de Usuarios (`SGP-28`) y Auditoría Operativa (`SGP-29`):** Ambos
-módulos forman parte del alcance activo en desarrollo del Sprint 3. En el
-estado actual del backend, las entidades `Rol`, `Usuario` (con `Argon2`) y
-`RegistroAuditoria` ya existen y persisten los eventos críticos de cargas y
-sincronización de maestro (siendo administrables temporalmente desde **Django
-Admin `/admin/`**), quedando pendiente exponer los endpoints REST protegidos
-(`/api/v1/users/` y `/api/v1/audit-logs/`) para conectar `UsersView.jsx` y
-`AuditView.jsx`. Adicionalmente, bajo `US-EXTRA-01 / SGP-30` se contempla
-extender la respuesta de pre-lectura y procesamiento de cargas para alimentar el
-asistente visual paso a paso solicitado por el Profesor Guía. El centro de
-emisión, la agencia, el canal de compra y el sitio operacional quedan fuera del
-MVP hasta contar con semántica y catálogos oficiales.
+**Gestión de Usuarios (`SGP-28`), Auditoría Operativa (`SGP-29`) y Asistente Visual (`SGP-30`):** Todos estos módulos se encuentran 100% implementados e integrados entre el backend DRF (`/api/v1/users/`, `/api/v1/audit-logs/`, `/api/v1/uploads/headers/`, `/api/v1/uploads/process/`, `/api/v1/uploads/history/`) y las vistas React (`UsersView.jsx`, `AuditView.jsx`, `UploadExcelView.jsx` y `UploadsHistoryView.jsx`), manteniendo además **Django Admin (`/admin/`)** como consola de respaldo nativo. El centro de emisión, la agencia, el canal de compra y el sitio operacional quedan fuera del MVP hasta contar con semántica y catálogos oficiales.
 
 ## Salud y despliegue
 
@@ -359,7 +357,7 @@ El script `backend/production_entrypoint.sh` automatiza este proceso en Render/p
 
 ## Cobertura de QA
 
-La suite automatizada cuenta con **68 pruebas** distribuidas en 8 módulos
+La suite automatizada cuenta con **69 pruebas** distribuidas en 8 módulos
 (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
 `core/services/tests_master_import.py`, `core/services/tests_dashboard.py`,
 `core/services/tests_user_management.py`, `core/services/tests_audit.py` y
@@ -371,7 +369,8 @@ La suite automatizada cuenta con **68 pruebas** distribuidas en 8 módulos
   trazabilidad de eventos en `RegistroAuditoria` (`LOGIN_EXITOSO`,
   `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`) y control RBAC
   (`core/tests.py`).
-- Idempotencia del comando `seed_demo_data`, preservación de contraseñas y
+- Idempotencia del comando `seed_demo_data`, preservación de contraseñas,
+  reseteo limpio de base de datos en desarrollo (`seed_demo_data --reset`) y
   bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
 - Verificación del endpoint de salud `GET /api/v1/health/` (200 OK), presencia
   y orden de `WhiteNoiseMiddleware` en `MIDDLEWARE`, y configuración de
@@ -391,7 +390,8 @@ La suite automatizada cuenta con **68 pruebas** distribuidas en 8 módulos
   (`inspect_excel`), rechazo de archivos corruptos/vacíos/mayores a 10 MB,
   procesamiento con respuesta parcial `207`, persistencia cifrada en `JSONB`,
   trazabilidad de las 4 etapas del pipeline (`pipeline_trace`), historial de
-  cargas y aislamiento estricto por usuario (`core/services/api_tests.py`).
+  cargas enriquecido (`summary_kpis`, `tasa_aprobacion`, `columnas_dinamicas`,
+  `filas_tabla`) y aislamiento estricto por usuario (`core/services/api_tests.py`).
 - Importación masiva del Administrador (`UPSERT` CSV/XLSX), errores parciales,
   listado paginado y permisos RBAC (`core/services/tests_master_import.py`).
 - Filtros del Dashboard del Consultor, paginación, acceso exclusivo de solo
@@ -406,7 +406,7 @@ La suite automatizada cuenta con **68 pruebas** distribuidas en 8 módulos
   y auditoría SQL en PostgreSQL certificando tokens Fernet y cero PII en plano
   (`US-14 / SGP-26`, `core/services/tests_stress.py`).
 
-La suite completa consta de **68 pruebas automatizadas** que se ejecutan
+La suite completa consta de **69 pruebas automatizadas** que se ejecutan
 íntegramente en verde (`100% pass`).
 
 Para ejecutar todos los archivos de pruebas descubiertos por pytest:

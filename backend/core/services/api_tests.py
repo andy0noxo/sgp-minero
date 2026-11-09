@@ -111,8 +111,16 @@ class UploadApiTests(TestCase):
             {
                 "file": excel_upload(
                     [
-                        {"Rut": "12345678-5", "Nombre": "Maria Perez"},
-                        {"Rut": "12345678-6", "Nombre": "Persona inválida"},
+                        {
+                            "Rut": "12345678-5",
+                            "Nombre": "Maria Perez",
+                            "Aerolinea": "LATAM",
+                        },
+                        {
+                            "Rut": "12345678-6",
+                            "Nombre": "Persona inválida",
+                            "Aerolinea": "SKY",
+                        },
                     ]
                 ),
                 "mapping": '{"map_rut": "Rut", "map_nombre": "Nombre"}',
@@ -128,6 +136,13 @@ class UploadApiTests(TestCase):
         self.assertEqual(
             history.data["data"]["results"][0]["fecha_termino"] is not None, True
         )
+        self.assertEqual(history.data["data"]["summary_kpis"]["total_lotes"], 1)
+        self.assertEqual(
+            history.data["data"]["summary_kpis"]["total_aprobadas_historico"], 1
+        )
+        self.assertEqual(
+            history.data["data"]["summary_kpis"]["total_rechazadas_historico"], 1
+        )
 
         detail = self.client.get(f"/api/v1/uploads/history/{batch_id}/")
         self.assertEqual(detail.status_code, 200)
@@ -136,6 +151,17 @@ class UploadApiTests(TestCase):
             detail.data["data"]["detalle_errores"][0]["code"], "INVALID_RUT"
         )
         self.assertEqual(len(detail.data["data"]["registros_aprobados"]), 1)
+        self.assertEqual(
+            detail.data["data"]["registros_aprobados"][0]["faena"],
+            "Faena Cordillera",
+        )
+        self.assertEqual(
+            detail.data["data"]["registros_aprobados"][0]["datos_dinamicos"],
+            {"Aerolinea": "LATAM"},
+        )
+        self.assertEqual(detail.data["data"]["columnas_dinamicas"], ["Aerolinea"])
+        self.assertIn("pipeline_trace", detail.data["data"])
+        self.assertEqual(len(detail.data["data"]["filas_tabla"]), 2)
 
     def test_upload_history_does_not_expose_another_loaders_batch(self):
         other_role = Rol.objects.get(nombre_rol="Cargador")
