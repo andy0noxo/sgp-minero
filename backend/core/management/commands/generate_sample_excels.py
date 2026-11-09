@@ -13,7 +13,7 @@ from core.management.commands.seed_demo_data import (
 
 
 def _get_seeded_workers():
-    """Return list of dicts matching the 75 seeded Maestro_Personas records."""
+    """Return list of dicts matching the 600 seeded Maestro_Personas records."""
     workers = []
     for index in range(DEMO_MASTER_ROW_COUNT):
         rut = _rut_for_number(20000000 + index)
@@ -42,15 +42,16 @@ def _broken_dv_rut(valid_rut):
 
 class Command(BaseCommand):
     help = (
-        "Genera 5 archivos Excel (.xlsx) de prueba para el rol Cargador "
-        "con 10, 25, 50, 100 y 500 filas y distintos escenarios de mapeo."
+        "Genera la planilla maestra de 600 trabajadores para el Administrador "
+        "y los 5 archivos Excel (.xlsx) de prueba para el Cargador (10, 25, "
+        "50, 100 y 500 filas) con trabajadores 100% únicos por fila."
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--output-dir",
             default=None,
-            help="Directorio de salida para los 5 archivos .xlsx",
+            help="Directorio de salida para los archivos .xlsx y .csv",
         )
 
     def handle(self, *args, **options):
@@ -63,17 +64,15 @@ class Command(BaseCommand):
 
         target_dir.mkdir(parents=True, exist_ok=True)
         workers = _get_seeded_workers()
-        enabled_workers = [w for w in workers if w["habilitado"]]
-        disabled_workers = [w for w in workers if not w["habilitado"]]
+        enabled_workers = [w for w in workers if w["habilitado"]]  # 450 únicos
+        disabled_workers = [w for w in workers if not w["habilitado"]]  # 150 únicos
 
         files_created = []
 
         # ------------------------------------------------------------------
-        # ARCHIVO 0 (ADMINISTRADOR): Maestro_Personas (75 trabajadores)
-        # Columnas oficiales: rut, nombre_completo, faena, centro_costo,
-        # estado_habilitacion. Permite poblar o sincronizar la tabla maestra
-        # desde el rol Administrador y garantiza que los 5 Excel del Cargador
-        # entreguen exactamente los mismos resultados esperados.
+        # ARCHIVO 0 (ADMINISTRADOR): Maestro_Personas (600 trabajadores únicos)
+        # 450 Habilitados + 150 Inhabilitados. Abarca todos los trabajadores
+        # de los 5 archivos de prueba del Cargador sin repetir RUTs por fila.
         # ------------------------------------------------------------------
         rows_maestro = [
             {
@@ -89,10 +88,10 @@ class Command(BaseCommand):
         ]
         df_maestro = pd.DataFrame(rows_maestro)
         path_0_xlsx = (
-            target_dir / "00_Maestro_Personas_Administrador_75_trabajadores.xlsx"
+            target_dir / "00_Maestro_Personas_Administrador_600_trabajadores.xlsx"
         )
         path_0_csv = (
-            target_dir / "00_Maestro_Personas_Administrador_75_trabajadores.csv"
+            target_dir / "00_Maestro_Personas_Administrador_600_trabajadores.csv"
         )
         df_maestro.to_excel(path_0_xlsx, index=False)
         df_maestro.to_csv(path_0_csv, index=False, encoding="utf-8-sig")
@@ -100,7 +99,7 @@ class Command(BaseCommand):
         files_created.append((path_0_csv.name, len(rows_maestro)))
 
         # ------------------------------------------------------------------
-        # ARCHIVO 1: 10 filas - Nombres estándar (Auto-detectados 9/9)
+        # ARCHIVO 1: 10 filas (10 trabajadores únicos) - Nombres estándar
         # Modalidad fecha: Solicitud de emisión (Solo fecha)
         # 8 válidas + 2 errores (1 INVALID_RUT, 1 PERSON_INACTIVE)
         # ------------------------------------------------------------------
@@ -111,7 +110,7 @@ class Command(BaseCommand):
         turnos = ["7x7", "14x14", "4x3"]
 
         for i in range(8):
-            w = enabled_workers[i % len(enabled_workers)]
+            w = enabled_workers[i]
             rows_10.append(
                 {
                     "RUT_Pasajero": w["rut"],
@@ -125,11 +124,10 @@ class Command(BaseCommand):
                     "Anotaciones": "Emisión estándar turno minero",
                 }
             )
-        # Fila 9: RUT con dígito verificador inválido (INVALID_RUT)
         rows_10.append(
             {
-                "RUT_Pasajero": _broken_dv_rut(enabled_workers[0]["rut"]),
-                "Nombre_Completo": enabled_workers[0]["nombre"],
+                "RUT_Pasajero": _broken_dv_rut(enabled_workers[8]["rut"]),
+                "Nombre_Completo": enabled_workers[8]["nombre"],
                 "Fecha_Vuelo": "2026-11-25",
                 "Origen": "SCL",
                 "Destino": "CJC",
@@ -139,7 +137,6 @@ class Command(BaseCommand):
                 "Anotaciones": "Caso prueba: DV inválido Módulo 11",
             }
         )
-        # Fila 10: Trabajador inhabilitado en Maestro_Personas (PERSON_INACTIVE)
         rows_10.append(
             {
                 "RUT_Pasajero": disabled_workers[0]["rut"],
@@ -158,15 +155,15 @@ class Command(BaseCommand):
         files_created.append((path_1.name, len(rows_10)))
 
         # ------------------------------------------------------------------
-        # ARCHIVO 2: 25 filas - Nombres manuales de contratista y SIN Origen,
-        # Destino ni Teléfono (quedan en blanco "—" en la estructura de tabla)
+        # ARCHIVO 2: 25 filas (25 trabajadores únicos) - Nombres manuales y
+        # SIN Origen, Destino ni Teléfono (quedan en blanco "—" en tabla)
         # Modalidad fecha: Vuelo comercial/chárter (Fecha y hora)
         # 20 válidas + 5 errores
         # ------------------------------------------------------------------
         rows_25 = []
         horas = ["06:45", "08:30", "11:15", "15:20", "19:50"]
         for i in range(20):
-            w = enabled_workers[i % len(enabled_workers)]
+            w = enabled_workers[i]
             day_num = (i % 15) + 10
             hora_str = horas[i % len(horas)]
             rows_25.append(
@@ -179,12 +176,11 @@ class Command(BaseCommand):
                     "Observaciones_Contrato": f"Subcontrato Mantención #{i + 1}",
                 }
             )
-        # 5 filas con error (2 INVALID_RUT, 2 PERSON_INACTIVE, 1 IDENTITY_MISMATCH)
         for i in range(2):
             rows_25.append(
                 {
-                    "RUN_Operario": _broken_dv_rut(enabled_workers[i + 2]["rut"]),
-                    "Trabajador_Nombre": enabled_workers[i + 2]["nombre"],
+                    "RUN_Operario": _broken_dv_rut(enabled_workers[20 + i]["rut"]),
+                    "Trabajador_Nombre": enabled_workers[20 + i]["nombre"],
                     "Fec_Traslado_Hora": "2026-11-28 08:30",
                     "Aerolinea_Operadora": "LATAM",
                     "Ciclo_Turno": "7x7",
@@ -192,7 +188,7 @@ class Command(BaseCommand):
                 }
             )
         for i in range(2):
-            dw = disabled_workers[i + 1]
+            dw = disabled_workers[i]
             rows_25.append(
                 {
                     "RUN_Operario": dw["rut"],
@@ -205,7 +201,7 @@ class Command(BaseCommand):
             )
         rows_25.append(
             {
-                "RUN_Operario": enabled_workers[5]["rut"],
+                "RUN_Operario": enabled_workers[22]["rut"],
                 "Trabajador_Nombre": "Trabajador Nombre No Coincide",
                 "Fec_Traslado_Hora": "2026-11-29 15:20",
                 "Aerolinea_Operadora": "LATAM",
@@ -218,8 +214,8 @@ class Command(BaseCommand):
         files_created.append((path_2.name, len(rows_25)))
 
         # ------------------------------------------------------------------
-        # ARCHIVO 3: 50 filas - Mixto (algunas estándar auto-detectadas y
-        # otras manuales) + sin Aerolínea ni Anotaciones + 2 columnas extra JSONB
+        # ARCHIVO 3: 50 filas (50 trabajadores únicos) - Mixto (estándar +
+        # manual) + sin Aerolínea ni Anotaciones + 2 columnas extra JSONB
         # Modalidad fecha: Tramo horario AM/PM y Vuelo Chárter asignado
         # 42 válidas + 8 errores
         # ------------------------------------------------------------------
@@ -232,28 +228,26 @@ class Command(BaseCommand):
             "2026-11-23 Tramo Diurno AM",
         ]
         for i in range(42):
-            w = enabled_workers[i % len(enabled_workers)]
+            w = enabled_workers[i]
             rows_50.append(
                 {
-                    "RUT_Pasajero": w["rut"],  # Estándar (auto-detectada)
-                    "Nom_Trabajador_Minero": w["nombre"],  # Manual
-                    "Fecha_Tramo_Viaje": tramos_y_charters[
-                        i % len(tramos_y_charters)
-                    ],  # Manual
-                    "Origen": origenes[i % len(origenes)],  # Estándar (auto-detectada)
-                    "Destino": destinos[i % len(destinos)],  # Estándar (auto-detectada)
-                    "Turno": turnos[i % len(turnos)],  # Estándar (auto-detectada)
-                    "Fono_Movil": f"+5697520{100 + i:03d}",  # Manual
-                    "Codigo_Reserva_PNR": f"PNR-MIN-{300 + i}",  # Extra -> JSONB
-                    "Campamento_Pabellon": f"Pabellón {(i % 6) + 1}",  # Extra -> JSONB
+                    "RUT_Pasajero": w["rut"],
+                    "Nom_Trabajador_Minero": w["nombre"],
+                    "Fecha_Tramo_Viaje": tramos_y_charters[i % len(tramos_y_charters)],
+                    "Origen": origenes[i % len(origenes)],
+                    "Destino": destinos[i % len(destinos)],
+                    "Turno": turnos[i % len(turnos)],
+                    "Fono_Movil": f"+5697520{100 + i:03d}",
+                    "Codigo_Reserva_PNR": f"PNR-MIN-{300 + i}",
+                    "Campamento_Pabellon": f"Pabellón {(i % 6) + 1}",
                 }
             )
         # 8 filas con error (INVALID_RUT, PERSON_INACTIVE, MISMATCH, NOT_FOUND)
         for i in range(2):
             rows_50.append(
                 {
-                    "RUT_Pasajero": _broken_dv_rut(enabled_workers[i + 4]["rut"]),
-                    "Nom_Trabajador_Minero": enabled_workers[i + 4]["nombre"],
+                    "RUT_Pasajero": _broken_dv_rut(enabled_workers[42 + i]["rut"]),
+                    "Nom_Trabajador_Minero": enabled_workers[42 + i]["nombre"],
                     "Fecha_Tramo_Viaje": "2026-11-24 AM (Mañana)",
                     "Origen": "SCL",
                     "Destino": "CJC",
@@ -264,7 +258,7 @@ class Command(BaseCommand):
                 }
             )
         for i in range(2):
-            dw = disabled_workers[i + 3]
+            dw = disabled_workers[i]
             rows_50.append(
                 {
                     "RUT_Pasajero": dw["rut"],
@@ -279,7 +273,7 @@ class Command(BaseCommand):
                 }
             )
         for i in range(2):
-            w = enabled_workers[i + 8]
+            w = enabled_workers[44 + i]
             rows_50.append(
                 {
                     "RUT_Pasajero": w["rut"],
@@ -313,8 +307,8 @@ class Command(BaseCommand):
         files_created.append((path_3.name, len(rows_50)))
 
         # ------------------------------------------------------------------
-        # ARCHIVO 4: 100 filas - Todas las 9 columnas con nombres personalizados
-        # + 3 columnas extra JSONB (Nro_Ticket_ETKT, Peso_Equipaje_Kg, EPP_Especial)
+        # ARCHIVO 4: 100 filas (100 trabajadores únicos) - Todas las 9 columnas
+        # con nombres personalizados + 3 columnas extra JSONB
         # Modalidad fecha: Ciclo Ida y Regreso (Turno) y Fechas DD/MM/YYYY
         # 85 válidas + 15 errores
         # ------------------------------------------------------------------
@@ -333,7 +327,7 @@ class Command(BaseCommand):
             "Dieléctrico",
         ]
         for i in range(85):
-            w = enabled_workers[i % len(enabled_workers)]
+            w = enabled_workers[i]
             rows_100.append(
                 {
                     "Doc_Identidad": w["rut"],
@@ -353,16 +347,16 @@ class Command(BaseCommand):
         # 15 errores (4 INVALID_RUT, 4 INACTIVE, 4 MISMATCH, 3 NOT_FOUND)
         for i in range(15):
             if i < 4:
-                rut_val = _broken_dv_rut(enabled_workers[i]["rut"])
-                nom_val = enabled_workers[i]["nombre"]
+                rut_val = _broken_dv_rut(enabled_workers[85 + i]["rut"])
+                nom_val = enabled_workers[85 + i]["nombre"]
                 nota = "Error prueba: INVALID_RUT"
             elif i < 8:
-                dw = disabled_workers[i % len(disabled_workers)]
+                dw = disabled_workers[i - 4]
                 rut_val = dw["rut"]
                 nom_val = dw["nombre"]
                 nota = "Error prueba: PERSON_INACTIVE"
             elif i < 12:
-                w = enabled_workers[i]
+                w = enabled_workers[89 + (i - 8)]
                 rut_val = w["rut"]
                 nom_val = f"Identidad No Coincide {i}"
                 nota = "Error prueba: IDENTITY_MISMATCH"
@@ -392,9 +386,10 @@ class Command(BaseCommand):
         files_created.append((path_4.name, len(rows_100)))
 
         # ------------------------------------------------------------------
-        # ARCHIVO 5: 500 filas - Masivo Multiformato (Estándar + Manual + JSONB)
-        # Incluye los 5 formatos de fecha de vuelo mineros
-        # 420 válidas + 80 errores
+        # ARCHIVO 5: 500 filas (500 trabajadores 100% únicos, sin repetir RUT)
+        # 420 trabajadores Habilitados únicos (enabled_workers[0..419]) +
+        # 80 errores únicos (20 INVALID_RUT, 20 INACTIVE, 20 MISMATCH,
+        # 20 NOT_FOUND).
         # ------------------------------------------------------------------
         rows_500 = []
         multiformatos_fecha = [
@@ -405,19 +400,19 @@ class Command(BaseCommand):
             "05/12/2026 al 12/12/2026",
         ]
         for i in range(420):
-            w = enabled_workers[i % len(enabled_workers)]
+            w = enabled_workers[i]
             rows_500.append(
                 {
-                    "RUT": w["rut"],  # Estándar
-                    "Nombre_Completo": w["nombre"],  # Estándar
+                    "RUT": w["rut"],
+                    "Nombre_Completo": w["nombre"],
                     "Fec_Programada_Vuelo": multiformatos_fecha[
                         i % len(multiformatos_fecha)
-                    ],  # Manual
-                    "Origen": origenes[i % len(origenes)],  # Estándar
-                    "Destino": destinos[i % len(destinos)],  # Estándar
-                    "Aerolínea": aerolineas[i % len(aerolineas)],  # Estándar
-                    "Turno": turnos[i % len(turnos)],  # Estándar
-                    "Celular_Pasajero": f"+5695100{1000 + i:04d}",  # Manual
+                    ],
+                    "Origen": origenes[i % len(origenes)],
+                    "Destino": destinos[i % len(destinos)],
+                    "Aerolínea": aerolineas[i % len(aerolineas)],
+                    "Turno": turnos[i % len(turnos)],
+                    "Celular_Pasajero": f"+5695100{1000 + i:04d}",
                     "Notas_Embarque": f"Operación masiva lote #{(i % 10) + 1}",
                     "Contrato_Marco": f"CM-2026-{(i % 8) + 1:02d}",
                     "Autorizado_Por": "Jefatura Turno Operaciones",
@@ -425,25 +420,24 @@ class Command(BaseCommand):
             )
         for i in range(80):
             mod = i % 4
+            idx_group = i // 4  # 0..19
             if mod == 0:
-                rut_val = _broken_dv_rut(
-                    enabled_workers[i % len(enabled_workers)]["rut"]
-                )
-                nom_val = enabled_workers[i % len(enabled_workers)]["nombre"]
+                rut_val = _broken_dv_rut(_rut_for_number(28000000 + idx_group))
+                nom_val = f"Pasajero DV Erroneo {idx_group + 1}"
                 nota = "Rechazo esperado: INVALID_RUT"
             elif mod == 1:
-                dw = disabled_workers[i % len(disabled_workers)]
+                dw = disabled_workers[idx_group]
                 rut_val = dw["rut"]
                 nom_val = dw["nombre"]
                 nota = "Rechazo esperado: PERSON_INACTIVE"
             elif mod == 2:
-                w = enabled_workers[i % len(enabled_workers)]
+                w = enabled_workers[420 + idx_group]
                 rut_val = w["rut"]
-                nom_val = f"Nombre Incorrecto Masivo {i}"
+                nom_val = f"Nombre Incorrecto Masivo {idx_group + 1}"
                 nota = "Rechazo esperado: IDENTITY_MISMATCH"
             else:
-                rut_val = _rut_for_number(27000000 + i)
-                nom_val = f"Pasajero No Registrado {i}"
+                rut_val = _rut_for_number(27000000 + idx_group)
+                nom_val = f"Pasajero No Registrado {idx_group + 1}"
                 nota = "Rechazo esperado: PERSON_NOT_FOUND"
 
             rows_500.append(

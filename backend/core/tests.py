@@ -189,18 +189,18 @@ class DemoDataCommandTests(TestCase):
         self.assertTrue(admin.is_superuser)
         self.assertTrue(admin.check_password("admin-password"))
         self.assertEqual(admin.rol.nombre_rol, "Administrador")
-        self.assertEqual(Maestro_Personas.objects.count(), 75)
+        self.assertEqual(Maestro_Personas.objects.count(), 600)
         self.assertEqual(
             Maestro_Personas.objects.filter(centro_costo="MINA-01").count(),
-            15,
+            120,
         )
         self.assertEqual(
             Maestro_Personas.objects.filter(faena="Faena Cordillera").count(),
-            25,
+            200,
         )
         self.assertEqual(
             Maestro_Personas.objects.filter(estado_habilitacion=False).count(),
-            19,
+            150,
         )
 
     @override_settings(DEBUG=True)
@@ -265,7 +265,7 @@ class DemoDataCommandTests(TestCase):
         self.assertEqual(RegistroAuditoria.objects.count(), 0)
         self.assertEqual(Usuario.objects.count(), 3)
         self.assertFalse(Usuario.objects.filter(rut="99999999-9").exists())
-        self.assertEqual(Maestro_Personas.objects.count(), 75)
+        self.assertEqual(Maestro_Personas.objects.count(), 600)
         self.assertFalse(Maestro_Personas.objects.filter(rut="88888888-8").exists())
         admin = Usuario.objects.get(rut="11111111-1")
         self.assertTrue(admin.check_password("reset-admin-password"))

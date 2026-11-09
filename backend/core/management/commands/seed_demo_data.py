@@ -20,7 +20,7 @@ ROLE_DEFINITIONS = {
     "Consultor": "Consulta del dashboard y auditoría",
 }
 
-DEMO_MASTER_ROW_COUNT = 75
+DEMO_MASTER_ROW_COUNT = 600
 DEMO_NAMES = (
     "Ana Soto",
     "Juan Pérez",

@@ -1,6 +1,6 @@
 # Set de Archivos Excel de Prueba (`Administrador` + `Cargador`) — `SGP-Minero`
 
-Este directorio contiene tanto la **planilla maestra de trabajadores (`Maestro_Personas`) para el rol Administrador** como las **5 planillas Excel (`.xlsx`) de nóminas de pasajes para el rol Cargador**.
+Este directorio contiene tanto la **planilla maestra de trabajadores (`Maestro_Personas`) con 600 trabajadores únicos para el rol Administrador** como las **5 planillas Excel (`.xlsx`) de nóminas de pasajes para el rol Cargador** (`10`, `25`, `50`, `100` y `500` filas, **sin repetir RUTs dentro de ningún archivo**).
 
 ---
 
@@ -8,15 +8,15 @@ Este directorio contiene tanto la **planilla maestra de trabajadores (`Maestro_P
 
 | Archivo | Formato | Filas | Columnas Oficiales | Uso y Resultado Esperado |
 | :--- | :-: | :-: | :--- | :--- |
-| **`00_Maestro_Personas_Administrador_75_trabajadores.xlsx`**<br>**`00_Maestro_Personas_Administrador_75_trabajadores.csv`** | `.xlsx` / `.csv` | **75** | `rut`, `nombre_completo`, `faena`, `centro_costo`, `estado_habilitacion` | Contiene exactamente a los **75 trabajadores** (`56 Habilitados` y `19 Inhabilitados`, repartidos en `Faena Cordillera`, `Faena Norte` y `Faena Central` y centros de costo `MINA-01`..`MINA-05`) contra los cuales se validan los 5 archivos Excel del rol **Cargador**.<br>• Si la tabla `Maestro_Personas` estaba vacía (`SEED_DEMO_MASTER_DATA=False` o en Producción): crea **`75 Nuevos Creados · 0 Actualizados · 0 Rechazados`**.<br>• Si ya tenía el seed local activo (`SEED_DEMO_MASTER_DATA=True`): ejecuta `UPSERT` mostrando **`0 Nuevos Creados · 75 Actualizados · 0 Rechazados`**. |
+| **`00_Maestro_Personas_Administrador_600_trabajadores.xlsx`**<br>**`00_Maestro_Personas_Administrador_600_trabajadores.csv`** | `.xlsx` / `.csv` | **600** | `rut`, `nombre_completo`, `faena`, `centro_costo`, `estado_habilitacion` | Contiene exactamente a los **600 trabajadores únicos** (`450 Habilitados` y `150 Inhabilitados`, repartidos en `200` por cada faena: `Faena Cordillera`, `Faena Norte` y `Faena Central`, y `120` por cada centro de costo `MINA-01`..`MINA-05`) contra los cuales se validan sin repetición todas las filas de los 5 archivos Excel del rol **Cargador** (incluyendo las 420 filas aprobadas + 20 discrepancias de nombre + 20 inhabilitados del archivo masivo de 500 filas).<br>• Si la tabla `Maestro_Personas` estaba vacía (`SEED_DEMO_MASTER_DATA=False` o en Producción): crea **`600 Nuevos Creados · 0 Actualizados · 0 Rechazados`**.<br>• Si ya tenía el seed local activo (`SEED_DEMO_MASTER_DATA=True`): ejecuta `UPSERT` mostrando **`0 Nuevos Creados · 600 Actualizados · 0 Rechazados`**. |
 
 ---
 
 ## 2. Los 5 Archivos para el Rol `Cargador` (`Asistente de Carga de Pasajes` en `/carga`)
 
-Cada uno de estos 5 archivos cruza contra los 75 trabajadores de `00_Maestro_Personas_Administrador_75_trabajadores.xlsx`, de modo que las filas válidas inyectan automáticamente **`Estado de Habilitación`**, **`Faena Minera`** y **`Centro de Costo`**, y las filas con errores controlados activan las reglas de validación (`INVALID_RUT`, `PERSON_INACTIVE`, `IDENTITY_MISMATCH` y `PERSON_NOT_FOUND`).
+Cada uno de estos 5 archivos utiliza **1 trabajador distinto por fila (0 RUTs repetidos)** y cruza directamente contra los 600 trabajadores de `00_Maestro_Personas_Administrador_600_trabajadores.xlsx`, de modo que las filas válidas inyectan automáticamente **`Estado de Habilitación`**, **`Faena Minera`** y **`Centro de Costo`**, y las filas con errores controlados activan las reglas de validación (`INVALID_RUT`, `PERSON_INACTIVE`, `IDENTITY_MISMATCH` y `PERSON_NOT_FOUND`).
 
-| # | Archivo `.xlsx` | Total Filas | Filas Aprobadas | Filas Rechazadas | Modalidad de Fecha de Vuelo | Columnas Auto-Detectadas (Nombre Estándar) | Columnas para Asignar Manualmente | Columnas Estándar en Blanco (`—`) | Columnas Extra → `JSONB` |
+| # | Archivo `.xlsx` | Total Filas (Trabajadores Únicos) | Filas Aprobadas | Filas Rechazadas | Modalidad de Fecha de Vuelo | Columnas Auto-Detectadas (Nombre Estándar) | Columnas para Asignar Manualmente | Columnas Estándar en Blanco (`—`) | Columnas Extra → `JSONB` |
 | :- | :--- | :-: | :-: | :-: | :--- | :--- | :--- | :--- | :--- |
 | **1** | `01_Nomina_Estandar_10_filas.xlsx` | **10** | **8** | **2** (`1 INVALID_RUT`, `1 PERSON_INACTIVE`) | **Solicitud de emisión (Solo fecha)** (`YYYY-MM-DD`) | `RUT_Pasajero`, `Nombre_Completo`, `Fecha_Vuelo`, `Origen`, `Destino`, `Aerolínea`, `Turno`, `Telefono_Contacto`, `Anotaciones` (**9 de 9**) | Ninguna (todas coinciden con el estándar) | Ninguna | Ninguna |
 | **2** | `02_Contratista_Manual_Sin_Ruta_25_filas.xlsx` | **25** | **20** | **5** (`2 INVALID_RUT`, `2 PERSON_INACTIVE`, `1 IDENTITY_MISMATCH`) | **Vuelo comercial/chárter (Fecha y hora)** (`YYYY-MM-DD HH:MM`) | Ninguna (**0 de 9**) | `RUN_Operario` → RUT<br>`Trabajador_Nombre` → Nombre<br>`Fec_Traslado_Hora` → Fecha Vuelo<br>`Aerolinea_Operadora` → Aerolínea<br>`Ciclo_Turno` → Turno<br>`Observaciones_Contrato` → Anotaciones | `Origen`, `Destino`, `Teléfono` (quedan en blanco `—` en la tabla) | Ninguna |

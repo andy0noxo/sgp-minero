@@ -226,11 +226,10 @@ Al iniciar el backend local se crean:
 | `cargador@minera.local` | Cargador | Carga Masiva + Mapper UI (`/carga`) y Mis Cargas (`/historial`) |
 | `consultor@minera.local` | Consultor | Dashboard Corporativo (`/dashboard`) y Auditoría Operativa (`/auditoria`) |
 
-Con `SEED_DEMO_MASTER_DATA=True` también se crean 75 personas demo en el
-Mantenedor, distribuidas entre `Faena Cordillera`, `Faena Norte` y
+Con `SEED_DEMO_MASTER_DATA=True` también se crean 600 personas demo en el
+Mantenedor (`450 Habilitados` y `150 Inhabilitados`), distribuidas entre `Faena Cordillera`, `Faena Norte` y
 `Faena Central`, cinco centros de costo y estados habilitados e inhabilitados.
-La cantidad permite probar la paginación y los filtros sin subir manualmente
-un archivo.
+La cantidad permite probar la paginación, los filtros y los 5 archivos Excel de prueba (de hasta 500 trabajadores únicos) sin repetir RUTs.
 
 **Reinicio limpio de datos en desarrollo (`RESET_DB_ON_CONTAINER_CREATE` y `--reset`):**
 Debido a que `docker-compose.yml` monta el volumen persistente `pgdata`, al eliminar únicamente los contenedores (sin `-v`) PostgreSQL conserva el disco anterior. Para permitir partir limpio desde cero al eliminar y recrear los contenedores en desarrollo, `backend/entrypoint.sh` verifica la marca interna `/var/lib/sgp_container_initialized`: cuando se crea un contenedor nuevo (`RESET_DB_ON_CONTAINER_CREATE=True` por defecto) o cuando se define `RESET_DB_ON_START=True`, ejecuta automáticamente `python manage.py seed_demo_data --reset`, purgando cargas previas (`LoteCarga`), viajes (`RegistroViaje`), eventos de auditoría (`RegistroAuditoria`), usuarios adicionales y registros maestros ajenos al seed base, dejando el entorno 100% limpio desde cero. También puedes ejecutarlo manualmente en cualquier momento con `docker compose exec backend python manage.py seed_demo_data --reset` o eliminar el volumen con `docker compose down -v`.
@@ -358,7 +357,7 @@ En el Paso 2 del asistente (**Comparador de Encabezados**), el sistema soporta:
 3. **Asignación oficial desde `Maestro_Personas` (sin mapeo manual)**: por seguridad operacional minera, `estado_habilitacion`, `faena` y `centro_costo` nunca se confían al Excel del contratista, sino que el servidor los valida e inyecta directamente desde `Maestro_Personas`.
 4. **6 Columnas Variables Típicas de Pasajes Mineros (`map_origen`, `map_destino`, `map_aerolinea`, `map_turno`, `map_telefono`, `map_anotaciones`)**: asignables si existen en el Excel o dejadas en blanco (`—`) si no vienen, permaneciendo siempre visibles dentro de la estructura fija de la tabla (en la Vista Previa del Paso 3, en `Mis Cargas` y en el `Dashboard`) para comprobar si falta información relevante. Cualquier columna adicional fuera de este esquema se empaqueta automáticamente en el campo polimórfico `JSONB`.
 
-Para pruebas integrales del rol Administrador y del rol Cargador, el repositorio incluye la planilla maestra [`00_Maestro_Personas_Administrador_75_trabajadores.xlsx`](archivos_prueba_cargador/00_Maestro_Personas_Administrador_75_trabajadores.xlsx) (y su versión `.csv`) junto con los **5 archivos Excel de prueba (`10`, `25`, `50`, `100` y `500` filas)** en [`archivos_prueba_cargador/`](archivos_prueba_cargador/README.md) (regenerables con `docker compose exec backend python manage.py generate_sample_excels`).
+Para pruebas integrales del rol Administrador y del rol Cargador, el repositorio incluye la planilla maestra [`00_Maestro_Personas_Administrador_600_trabajadores.xlsx`](archivos_prueba_cargador/00_Maestro_Personas_Administrador_600_trabajadores.xlsx) (y su versión `.csv`, con `600` trabajadores únicos: `450 Habilitados` + `150 Inhabilitados`) junto con los **5 archivos Excel de prueba (`10`, `25`, `50`, `100` y `500` filas sin repetir RUTs)** en [`archivos_prueba_cargador/`](archivos_prueba_cargador/README.md) (regenerables con `docker compose exec backend python manage.py generate_sample_excels`).
 
 La vista **Mis Cargas** (`/historial`) presenta tarjetas KPI acumuladas de gestión, un listado visual de las planillas `.xlsx` subidas con barra de progreso de aprobación, y un **panel de inspección visual en 4 pasos** para cualquier lote seleccionado: 1) Ficha del archivo subido y columnas dinámicas `JSONB`, 2) Trazabilidad de las 4 etapas del pipeline backend (`pipeline_trace`: Pandas, Módulo 11, Maestro y Fernet), 3) Balance de resultados de la subida y 4) Representación interactiva en tabla fila por fila del archivo con toda la estructura estandarizada (`RUT`, `Nombre`, `Habilitación`, `Faena`, `Centro Costo`, `Fecha Vuelo + Modalidad`, `Origen`, `Destino`, `Aerolínea`, `Turno`, `Teléfono`, `Anotaciones` y columnas extra `JSONB`); los lotes de otros usuarios no se exponen.
 

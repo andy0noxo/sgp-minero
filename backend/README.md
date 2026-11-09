@@ -102,9 +102,9 @@ docker compose exec backend python manage.py seed_demo_data --reset
 
 En el arranque local (`backend/entrypoint.sh`), cuando el contenedor backend se crea por primera vez tras haber sido eliminado (`RESET_DB_ON_CONTAINER_CREATE=True` por defecto, verificado mediante la marca `/var/lib/sgp_container_initialized` interna al contenedor) o cuando se define `RESET_DB_ON_START=True`, se ejecuta automáticamente `python manage.py seed_demo_data --reset`. De esta forma, al eliminar y volver a levantar los contenedores en desarrollo, siempre se parte desde cero aunque el volumen `pgdata` de PostgreSQL persista.
 
-Con `SEED_DEMO_MASTER_DATA=True` el comando crea 75 personas demo, repartidas
+Con `SEED_DEMO_MASTER_DATA=True` el comando crea 600 personas demo (`450 Habilitados` y `150 Inhabilitados`), repartidas
 entre `Faena Cordillera`, `Faena Norte` y `Faena Central`, cinco centros de
-costo y estados habilitados e inhabilitados para probar paginación y filtros.
+costo y estados habilitados e inhabilitados para probar paginación, filtros y las 5 nóminas de prueba (hasta 500 filas sin repetir RUTs).
 Sin `--reset`, es idempotente, conserva los registros reales y solo actualiza sus RUT demo
 deterministas.
 
