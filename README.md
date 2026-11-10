@@ -407,9 +407,11 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
 ### Documentación del repositorio
 
 - [`backend/README.md`](backend/README.md): contratos detallados de la API
-  `/api/v1/`, autenticación JWT/Argon2, despliegue Gunicorn/Render y cobertura QA.
+  `/api/v1/`, autenticación JWT/Argon2, despliegue Gunicorn/Render y cobertura QA (`75` pruebas automatizadas).
 - [`database/README.md`](database/README.md): operación de PostgreSQL, volumen
   `pgdata` y detalle de las 6 entidades del esquema híbrido (`JSONB`).
+- [`archivos_prueba_cargador/README.md`](archivos_prueba_cargador/README.md): catálogo del archivo maestro (`600` trabajadores únicos) y los 5 archivos `.xlsx` de prueba para el rol `Cargador` (`10`, `25`, `50`, `100` y `500` filas).
+- [`docs/plan de prueba.md`](docs/plan%20de%20prueba.md): Plan Maestro de Pruebas y Aseguramiento de Calidad (QA) con 90 casos de prueba (Unitarias, Caja Negra, Integración, Rendimiento y Seguridad).
 
 La carpeta [`database`](database/README.md) documenta la operación de
 PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las

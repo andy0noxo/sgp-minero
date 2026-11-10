@@ -140,6 +140,22 @@ class AuthenticationApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.cookies["sgp_refresh_token"]["max-age"], 0)
 
+    def test_refresh_token_cookie_issues_new_access_token_and_rejects_missing_cookie(
+        self,
+    ):
+        no_cookie_res = self.client.post("/api/v1/auth/refresh/")
+        self.assertEqual(no_cookie_res.status_code, 401)
+
+        login_response = self.client.post(
+            "/api/v1/auth/login/",
+            {"identifier": "12345678-5", "password": "correct-password"},
+            format="json",
+        )
+        self.client.cookies = login_response.cookies
+        refresh_res = self.client.post("/api/v1/auth/refresh/")
+        self.assertEqual(refresh_res.status_code, 200)
+        self.assertIn("access", refresh_res.data["data"])
+
     def test_health_endpoint_reports_database_status(self):
         response = self.client.get("/api/v1/health/")
         self.assertEqual(response.status_code, 200)

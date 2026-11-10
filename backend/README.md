@@ -357,21 +357,22 @@ El script `backend/production_entrypoint.sh` automatiza este proceso en Render/p
 
 ## Cobertura de QA
 
-La suite automatizada cuenta con **70 pruebas** distribuidas en 8 módulos
+La suite automatizada cuenta con **75 pruebas** distribuidas en 8 módulos
 (`core/tests.py`, `core/services/tests.py`, `core/services/api_tests.py`,
 `core/services/tests_master_import.py`, `core/services/tests_dashboard.py`,
 `core/services/tests_user_management.py`, `core/services/tests_audit.py` y
 `core/services/tests_stress.py`) ejecutadas automáticamente en GitHub Actions
-(`.github/workflows/ci.yml`), cubriendo:
+(`.github/workflows/ci.yml`) y documentadas en el Plan Maestro de Pruebas ([`docs/plan de prueba.md`](../docs/plan%20de%20prueba.md)), cubriendo:
 
-- Autenticación JWT, login por correo o RUT en múltiples formatos, renovación y
-  cierre de sesión por cookie `HttpOnly`, bloqueo tras 3 intentos fallidos,
-  trazabilidad de eventos en `RegistroAuditoria` (`LOGIN_EXITOSO`,
-  `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`) y control RBAC
+- Autenticación JWT, login por correo o RUT en múltiples formatos, renovación
+  (`POST /api/v1/auth/refresh/`) y cierre de sesión por cookie `HttpOnly`,
+  bloqueo tras 3 intentos fallidos, trazabilidad de eventos en
+  `RegistroAuditoria` (`LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`,
+  `LOGIN_BLOQUEADO`) y control RBAC (`core/tests.py`).
+- Idempotencia del comando `seed_demo_data` (con 600 trabajadores únicos),
+  preservación de contraseñas, reseteo limpio de base de datos en desarrollo
+  (`seed_demo_data --reset`) y bloqueo de ejecución cuando `DEBUG=False`
   (`core/tests.py`).
-- Idempotencia del comando `seed_demo_data`, preservación de contraseñas,
-  reseteo limpio de base de datos en desarrollo (`seed_demo_data --reset`) y
-  bloqueo de ejecución cuando `DEBUG=False` (`core/tests.py`).
 - Verificación del endpoint de salud `GET /api/v1/health/` (200 OK), presencia
   y orden de `WhiteNoiseMiddleware` en `MIDDLEWARE`, y configuración de
   `STATIC_ROOT` y `STORAGES` (`core/tests.py`).
@@ -380,17 +381,22 @@ La suite automatizada cuenta con **70 pruebas** distribuidas en 8 módulos
   rechazo de cuerpo alfanumérico y texto basura no estructurado, enteros
   numéricos y números flotantes sin sufijo `.0`), lectura de nóminas Excel/CSV con
   `dtype=object` para evitar alteraciones de tipo, normalización de nombres sin
-  tildes ni espacios sobrantes, coincidencia contra el maestro y validación
-  estricta del mapeo dinámico de columnas (`validate_mapper`: campos
-  obligatorios `map_rut` y `map_nombre`, campo de pasaje `map_fecha_vuelo`,
-  columnas existentes y prohibición de misma columna) (`core/services/tests.py`).
+  tildes ni espacios sobrantes, coincidencia contra el maestro, clasificación
+  automática de los 5 formatos de fecha de vuelo mineros (`classify_flight_date`)
+  y validación estricta del mapeo dinámico de columnas (`validate_mapper`: campos
+  obligatorios `map_rut` y `map_nombre`, `map_fecha_vuelo`, las 6 columnas
+  variables típicas de pasajes mineros, columnas existentes y prohibición de
+  misma columna) (`core/services/tests.py`).
 - Cifrado y descifrado autenticado con `Fernet` y manejo de llaves inválidas o
   ausentes (`core/services/tests.py`).
 - Lectura exclusiva de encabezados Excel (`nrows=0`), inspección estructural
   (`inspect_excel`) con limpieza de fechas Excel (`00:00:00` -> `YYYY-MM-DD`) y
   enteros flotantes (`.0`), rechazo de archivos corruptos/vacíos/mayores a 10 MB,
-  procesamiento con respuesta parcial `207`, estandarización de `map_fecha_vuelo`
-  a `fecha_vuelo`, persistencia cifrada en `JSONB`,
+  procesamiento con respuesta parcial `207`, comprobación de los 4 códigos de
+  rechazo (`INVALID_RUT`, `PERSON_INACTIVE`, `IDENTITY_MISMATCH`,
+  `PERSON_NOT_FOUND`), estandarización de `map_fecha_vuelo` + `tipo_fecha_vuelo`
+  y de las 6 columnas variables mineras, inyección de `faena`, `centro_costo` y
+  `estado_habilitacion` desde `Maestro_Personas`, persistencia cifrada en `JSONB`,
   trazabilidad de las 4 etapas del pipeline (`pipeline_trace`), historial de
   cargas enriquecido (`summary_kpis`, `tasa_aprobacion`, `columnas_dinamicas`,
   `filas_tabla`) y aislamiento estricto por usuario (`core/services/api_tests.py`).
@@ -408,7 +414,7 @@ La suite automatizada cuenta con **70 pruebas** distribuidas en 8 módulos
   y auditoría SQL en PostgreSQL certificando tokens Fernet y cero PII en plano
   (`US-14 / SGP-26`, `core/services/tests_stress.py`).
 
-La suite completa consta de **70 pruebas automatizadas** que se ejecutan
+La suite completa consta de **75 pruebas automatizadas** que se ejecutan
 íntegramente en verde (`100% pass`).
 
 Para ejecutar todos los archivos de pruebas descubiertos por pytest:

@@ -281,3 +281,54 @@ class UploadApiTests(TestCase):
             process_resp.data["data"]["pipeline_trace"]["columnas_dinamicas_jsonb"],
             ["Codigo_PNR_Extra"],
         )
+
+    @override_settings(AES_SECRET_KEY=Fernet.generate_key().decode())
+    def test_process_identifies_all_four_rejection_codes_and_oversized_file(self):
+        Maestro_Personas.objects.create(
+            rut="11111111-1",
+            nombre_completo="Trabajador Inactivo",
+            faena="Faena Norte",
+            centro_costo="MINA-02",
+            estado_habilitacion=False,
+        )
+        excel_file = excel_upload(
+            [
+                {"RUT": "12345678-5", "Nombre": "María Pérez"},
+                {"RUT": "12345678-6", "Nombre": "RUT Malo"},
+                {"RUT": "11111111-1", "Nombre": "Trabajador Inactivo"},
+                {"RUT": "12345678-5", "Nombre": "Nombre Incorrecto"},
+                {"RUT": "10000013-K", "Nombre": "No Registrado"},
+            ]
+        )
+        resp = self.client.post(
+            "/api/v1/uploads/process/",
+            {
+                "file": excel_file,
+                "mapping": '{"map_rut": "RUT", "map_nombre": "Nombre"}',
+            },
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 207)
+        self.assertEqual(resp.data["data"]["total_procesados"], 1)
+        self.assertEqual(resp.data["data"]["total_errores"], 4)
+        codes = [err["code"] for err in resp.data["data"]["detalle_errores"]]
+        self.assertEqual(
+            codes,
+            [
+                "INVALID_RUT",
+                "PERSON_INACTIVE",
+                "IDENTITY_MISMATCH",
+                "PERSON_NOT_FOUND",
+            ],
+        )
+
+        oversized = SimpleUploadedFile(
+            "gigante.xlsx", b"x" * (10 * 1024 * 1024 + 1)
+        )
+        over_resp = self.client.post(
+            "/api/v1/uploads/headers/",
+            {"file": oversized},
+            format="multipart",
+        )
+        self.assertEqual(over_resp.status_code, 400)
+        self.assertEqual(over_resp.data["error"]["code"], "INVALID_FILE")
