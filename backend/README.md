@@ -138,8 +138,8 @@ SEED_DEMO_DATA=False
 Las rutas protegidas responden `401` sin JWT, `403` cuando el usuario
 autenticado no posee el rol requerido y `405` ante métodos HTTP no habilitados.
 El frontend es una SPA React/Vite enrutada con `react-router-dom`
-(`BrowserRouter` + `ProtectedRoute`) sobre `/`, `/carga`, `/historial` y
-`/dashboard`. Al autenticarse en `/`, el Administrador y el Cargador son
+(`BrowserRouter` + `ProtectedRoute`) sobre `/`, `/carga`, `/historial`,
+`/dashboard`, `/usuarios` (`/admin-panel`) y `/auditoria`. Al autenticarse en `/`, el Administrador y el Cargador son
 dirigidos a `/carga` (Mantenedor de Personas o Carga Masiva respectivamente) y
 el Consultor a `/dashboard`. El Dashboard es exclusivo del Consultor, tanto en
 frontend como en backend.
@@ -281,7 +281,7 @@ adicionales al servidor ni persistir el archivo exportado.
 
 La aplicación frontend es una SPA React/Vite que utiliza `react-router-dom`
 (`BrowserRouter` + `ProtectedRoute`) para gestionar las rutas `/`, `/carga`,
-`/historial` y `/dashboard` según el rol autenticado, mientras que la
+`/historial`, `/dashboard`, `/usuarios` (`/admin-panel`) y `/auditoria` según el rol autenticado, mientras que la
 autorización efectiva se aplica obligatoriamente en el backend mediante JWT y
 permisos DRF.
 
@@ -353,7 +353,7 @@ python manage.py migrate --noinput
 python manage.py check --deploy
 ```
 
-El script `backend/production_entrypoint.sh` automatiza este proceso en Render/producción antes de arrancar Gunicorn. Para una guía paso a paso completa del despliegue en Neon, Render y Vercel, consulta el documento oficial `docs/GUIA_DESPLIEGUE_CLOUD.md`.
+El script `backend/production_entrypoint.sh` automatiza este proceso en Render/producción antes de arrancar Gunicorn.
 
 ## Cobertura de QA
 
@@ -362,7 +362,7 @@ La suite automatizada cuenta con **75 pruebas** distribuidas en 8 módulos
 `core/services/tests_master_import.py`, `core/services/tests_dashboard.py`,
 `core/services/tests_user_management.py`, `core/services/tests_audit.py` y
 `core/services/tests_stress.py`) ejecutadas automáticamente en GitHub Actions
-(`.github/workflows/ci.yml`) y documentadas en el Plan Maestro de Pruebas ([`docs/plan de prueba.md`](../docs/plan%20de%20prueba.md)), cubriendo:
+(`.github/workflows/ci.yml`) y documentadas en el Plan Maestro de Pruebas (Plan Maestro de Pruebas: `Fase 2/Evidencias Proyecto/plan de prueba.docx`), cubriendo:
 
 - Autenticación JWT, login por correo o RUT en múltiples formatos, renovación
   (`POST /api/v1/auth/refresh/`) y cierre de sesión por cookie `HttpOnly`,
@@ -425,7 +425,7 @@ docker compose exec backend pytest
 
 ## Catálogo de Dependencias y Justificación Técnica (requirements.txt)
 
-Todas las dependencias instaladas en el backend se encuentran versionadas en `requirements.txt` y justificadas en detalle en el documento oficial [`docs/CATALOGO_DEPENDENCIAS_BACKEND.md`](../docs/CATALOGO_DEPENDENCIAS_BACKEND.md):
+Todas las dependencias instaladas en el backend se encuentran versionadas en `requirements.txt`:
 
 | Paquete | Versión | Rol en SGP-Minero |
 | :--- | :--- | :--- |
@@ -446,7 +446,6 @@ Todas las dependencias instaladas en el backend se encuentran versionadas en `re
 | `flake8` | `>=7.1,<8` | Linter de código estático (PEP 8 y detección de errores lógicos). |
 | `black` | `>=24.8,<26` | Formateador determinista de código Python en 88 caracteres. |
 
-Para el detalle completo de cada paquete con su definición técnica, propósito general, archivos donde se utiliza y justificación de selección frente a alternativas, consulta [`docs/CATALOGO_DEPENDENCIAS_BACKEND.md`](../docs/CATALOGO_DEPENDENCIAS_BACKEND.md).
 
 ## Dominio y separación de base de datos
 

@@ -36,7 +36,7 @@ El proyecto opera bajo una arquitectura de servicios contenerizados desacoplados
 * SimpleJWT & Argon2 (`argon2-cffi`) (Autenticación JWT y hashing resistente a GPU)  
 * Pandas & Openpyxl (Motor de ingesta y lectura de Excel y CSV)  
 * Cryptography (Módulo `Fernet` `AES-128-CBC + HMAC-SHA256` para cifrado PII)  
-* Gunicorn, WhiteNoise, Pytest, Flake8 & Black (Servidor WSGI de producción, servicio de estáticos, suite de **68 pruebas automatizadas** y linters/formateadores contenerizados)
+* Gunicorn, WhiteNoise, Pytest, Flake8 & Black (Servidor WSGI de producción, servicio de estáticos, suite de **75 pruebas automatizadas** y linters/formateadores contenerizados)
 
 **Base de Datos & DevSecOps:**
 
@@ -53,7 +53,7 @@ La separación prevista por la arquitectura desacoplada se encuentra 100% config
 * **Backend Dockerizado en Render:** Aprovisionable vía Blueprint (`render.yaml`) o Web Service Docker (`backend/Dockerfile` + `backend/production_entrypoint.sh`), con servicio de estáticos comprimidos (`WhiteNoise`), endpoint de monitoreo en `/api/v1/health/` y soporte de cookies cross-domain (`SameSite=None; Secure=True`).
 * **PostgreSQL administrado en Neon:** Conexión forzada SSL (`sslmode=require`) mediante `DATABASE_URL`.
 
-Para un instructivo operacional completo de despliegue paso a paso, consulta el documento oficial [docs/GUIA_DESPLIEGUE_CLOUD.md](docs/GUIA_DESPLIEGUE_CLOUD.md).
+La infraestructura se encuentra completamente preparada para despliegue automatizado mediante variables de entorno en Render, Vercel y Neon PostgreSQL.
 
 ## **Ejecución local y comandos**
 
@@ -311,13 +311,16 @@ sin autenticación.
 | `POST` | `/api/v1/master-persons/import/` | Administrador |
 | `GET` | `/api/v1/master-persons/` | Administrador |
 | `GET` | `/api/v1/dashboard/records/` | Consultor |
+| `GET` | `/api/v1/users/` | Administrador |
+| `POST` | `/api/v1/users/` | Administrador |
+| `PATCH` | `/api/v1/users/<user_id>/` | Administrador |
+| `GET` | `/api/v1/audit-logs/` | Administrador |
 
-El Dashboard (`/dashboard`) es exclusivo del rol Consultor. En el frontend ya se
-encuentran protegidas por rol las rutas de **Mantenedor de Personas (`/carga`)**,
-**Gestión de Usuarios (`/usuarios` — `SGP-28`)** y **Auditoría Operativa
-(`/auditoria` — `SGP-29`)**, encontrándose en desarrollo para el cierre del
-Sprint 3 la conexión de `/usuarios` y `/auditoria` con sus respectivos endpoints
-DRF.
+El Dashboard (`/dashboard`) es exclusivo del rol Consultor. Para el rol
+Administrador se encuentran 100% operativas y protegidas por RBAC tanto en el
+frontend (`ProtectedRoute`) como en el backend DRF (`IsAdministrador`) las
+vistas de **Mantenedor de Personas (`/carga`)**, **Gestión de Usuarios
+(`/usuarios` — `SGP-28`)** y **Auditoría Operativa (`/auditoria` — `SGP-29`)**.
 
 Los métodos no definidos para una vista protegida responden `405`, y un usuario
 autenticado con un rol incorrecto recibe `403`. La URL `/admin/` corresponde al
@@ -387,19 +390,8 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
   exportación masiva en servidor de todos los resultados.
 - El cifrado de PII se implementa con `Fernet`, basado en `AES-128-CBC` y
   `HMAC-SHA256`, mediante la llave `AES_SECRET_KEY`.
-- **Gestión de Usuarios (`SGP-28`) y Auditoría Operativa (`SGP-29`)** forman
-  parte del alcance funcional vigente en desarrollo para Sprint 3: sus modelos
-  (`Rol`, `Usuario`, `RegistroAuditoria` con bitácora activa de
-  `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`,
-  `PROCESAR_CARGA_VIAJES` e `IMPORTAR_MAESTRO_PERSONAS`), sus interfaces base
-  (`UsersView.jsx` y `AuditView.jsx`) y sus rutas protegidas RBAC (`/usuarios`
-  y `/auditoria`) ya están integrados en el repositorio, restando conectar sus
-  endpoints DRF (`/api/v1/users/` y `/api/v1/audit-logs/`), manteniendo
-  **Django Admin (`/admin/`)** como consola administrativa nativa auxiliar.
-- Por solicitud del Profesor Guía, se encuentra planificada la tarea adicional
-  **`US-EXTRA-01 / SGP-30`** para enriquecer visualmente el flujo del `Cargador`
-  con comparación visual de encabezados, vista previa de la tabla estandarizada
-  a subir y visualización paso a paso de lo que ejecuta internamente el backend.
+- **Gestión de Usuarios (`SGP-28`) y Auditoría Operativa (`SGP-29`)** se encuentran **100% implementadas y operativas**: sus modelos (`Rol`, `Usuario`, `RegistroAuditoria` con bitácora inmutable de `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `CUENTA_BLOQUEADA`, `LOGIN_BLOQUEADO`, `PROCESAR_CARGA_VIAJES`, `IMPORTAR_MAESTRO_PERSONAS`, `CREAR_USUARIO`, `ACTUALIZAR_USUARIO` y `EXPORTAR_AUDITORIA`), sus vistas React (`UsersView.jsx` y `AuditView.jsx`), sus rutas protegidas RBAC (`/usuarios` y `/auditoria`) y sus endpoints DRF (`/api/v1/users/` y `/api/v1/audit-logs/` con exportación CSV UTF-8 BOM) están completamente integrados, manteniendo **Django Admin (`/admin/`)** como consola administrativa nativa auxiliar.
+- **Asistente Visual Paso a Paso (`US-EXTRA-01 / SGP-30`):** Implementado al **100%** tanto en la vista de subida (`/carga`) como en el historial (`Mis Cargas` en `/historial`), guiando al `Cargador` en 4 etapas (inspección estructural del Excel, comparador de encabezados con muestras reales para los 3 campos troncales + 6 columnas variables mineras, vista previa de la tabla estandarizada con modalidad de fecha de vuelo e insignias `Fernet`, y trazabilidad de las 4 fases del pipeline backend).
 - Centro de emisión, agencia, canal de compra y sitio operacional quedan
   fuera del MVP hasta que exista una definición empresarial y un catálogo
   oficial.
@@ -411,7 +403,12 @@ Las decisiones funcionales y de arquitectura vigentes son las siguientes:
 - [`database/README.md`](database/README.md): operación de PostgreSQL, volumen
   `pgdata` y detalle de las 6 entidades del esquema híbrido (`JSONB`).
 - [`archivos_prueba_cargador/README.md`](archivos_prueba_cargador/README.md): catálogo del archivo maestro (`600` trabajadores únicos) y los 5 archivos `.xlsx` de prueba para el rol `Cargador` (`10`, `25`, `50`, `100` y `500` filas).
-- [`docs/plan de prueba.md`](docs/plan%20de%20prueba.md): Plan Maestro de Pruebas y Aseguramiento de Calidad (QA) con 90 casos de prueba (Unitarias, Caja Negra, Integración, Rendimiento y Seguridad).
+- `Fase 2/Evidencias Proyecto/plan de prueba.docx`: Plan Maestro de Pruebas y Aseguramiento de Calidad (QA) en formato Word institucional Duoc UC con 90 casos de prueba (Unitarias, Caja Negra, Integración, Rendimiento y Seguridad) y suite automatizada de 75 tests.
+- `Fase 2/Evidencias Proyecto/DOCUMENTACIÓN ÁGIL - FASE 1_ SGP-MINERO.docx`: Documentación Ágil completa (Línea Base Fase 1 + Actualizaciones Sprints 0 al 3) con los diagramas actualizados de Arquitectura, Modelo Relacional de 6 tablas y Diagramas UML.
+- `Fase 2/Evidencias Proyecto/Documentación Scrum Fase 2.docx`: Evidencias formales de las ceremonias Scrum (*Sprint Planning, Sprint Backlog, Scrumboard, Burndown Chart, Daily Meetings, Impediment Log, Releases, Reviews y Retrospectives* de los Sprints 1 a 3).
+- `Fase 2/Evidencias Proyecto/Daily Scrum (3).xlsx`: Registro continuo y detallado de las reuniones diarias Daily Standup de los Sprints 1, 2 y 3.
+- `Fase 2/Evidencias Proyecto/INFORME_REVISION_Y_AVANCE_SGP_MINERO.docx`: Informe integral de auditoría técnica, metodológica y de avance del proyecto (`109 / 109 SP` completados).
+- `Fase 2/Evidencias Grupales/2.6_GuiaEstudiante_Fase 2_Informe Final Proyecto APT.docx`: Guía del Estudiante e Informe Final de Proyecto APT para Fase 2 en formato oficial Duoc UC.
 
 La carpeta [`database`](database/README.md) documenta la operación de
 PostgreSQL. El esquema no se duplica en SQL: la fuente oficial son las
