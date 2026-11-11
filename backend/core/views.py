@@ -72,9 +72,15 @@ class RefreshTokenView(TokenRefreshView):
     permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME)
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token no proporcionado en cookies."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         serializer = self.get_serializer(
             data={
-                "refresh": request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME),
+                "refresh": refresh_token,
             }
         )
         serializer.is_valid(raise_exception=True)
